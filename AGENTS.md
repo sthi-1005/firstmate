@@ -272,8 +272,6 @@ No turn ends blind while work is under way, including turns described as holding
 - After any supervision-branch acknowledgement succeeds or reports that a sequence is already processed, never acknowledge that sequence again or retry the refusal.
 - A status line is a wake event, not current state; use `bin/fm-crew-state.sh` when current state matters, especially before re-escalating an old decision, blocker, or pause.
 - `bin/fm-classify-lib.sh` owns the distinction between declared `paused:` waits and `blocked:` events needing firstmate action; `bin/fm-brief.sh` owns worker declaration instructions.
-When this home supervises a worker that opens the keyed `reasoning-chunk` blocker, answer the exact question directly when established evidence settles it; otherwise commission one focused scout to investigate that question and its disconfirming evidence while the original worker retains implementation ownership.
-Route the conclusion back to the original worker with `fm-send --resolve-key reasoning-chunk` rather than replacing or independently implementing around that worker.
 
 Handle actionable wakes as follows:
 
