@@ -355,6 +355,12 @@ STUB
       "$mode: promoted worker did not receive the Captain's intent subsection"
     assert_grep "## Firstmate spec" "$payload" \
       "$mode: promoted worker did not receive the Firstmate spec subsection"
+    assert_grep 'status protocol; the instruction inbox and its acknowledgement; the escalation rules' "$payload" \
+      "$mode: promotion did not retain the scout escalation rules"
+    assert_grep 'blocked [key=reasoning-chunk] [at=<epoch>]' "$home/data/$id/brief.md" \
+      "$mode: promoted durable brief lost the scout reasoning escalation"
+    assert_grep 'resolve-key reasoning-chunk' "$home/data/$id/brief.md" \
+      "$mode: promoted durable brief lost the keyed answer path"
 
     # Both the delivered prompt and persisted relaunch brief are public outputs.
     for contract in "$payload" "$home/data/$id/brief.md"; do

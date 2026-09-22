@@ -1006,6 +1006,50 @@ ROWS
   pass "fm-brief.sh: scout Lavish hosting follows the bootstrap lavish-axi floor"
 }
 
+# The public scaffold gives every ordinary crew the same bounded reasoning
+# escalation without turning a persistent secondmate charter into worker rules.
+# A secondmate home invokes the same scaffold for its own crews.
+test_reasoning_escalation_contract() {
+  local home brief kind id child
+  home="$TMP_ROOT/reasoning/home"
+  child="$TMP_ROOT/reasoning/secondmate-home"
+  for kind in no-mistakes direct-PR local-only scout; do
+    id="reasoning-$kind"
+    if [ "$kind" = scout ]; then
+      FM_HOME="$home" "$ROOT/bin/fm-brief.sh" "$id" fixture-project --scout >/dev/null \
+        || fail "$kind: brief generation failed"
+    else
+      FM_HOME="$home" "$ROOT/bin/fm-brief.sh" "$id" fixture-project --mode "$kind" >/dev/null \
+        || fail "$kind: brief generation failed"
+    fi
+    brief="$home/data/$id/brief.md"
+    assert_grep 'one failed hypothesis alone is not a reason to escalate' "$brief" "$kind: ordinary debugging lost"
+    assert_grep 'one bounded evidence pass' "$brief" "$kind: bounded evidence trigger missing"
+    assert_grep 'two bounded attempts fail' "$brief" "$kind: repeated attempts trigger missing"
+    assert_grep 'multiple viable causal or design models remain' "$brief" "$kind: alternative models trigger missing"
+    assert_grep 'correctness, architecture, security, scope, or accepted behavior' "$brief" "$kind: consequential threshold missing"
+    assert_grep 'stop before speculative code churn' "$brief" "$kind: stop boundary missing"
+    assert_grep 'blocked [key=reasoning-chunk] [at=<epoch>]' "$brief" "$kind: keyed event missing"
+    assert_grep 'exact question; observed evidence; attempted counterfactuals; viable options; what would disconfirm each' "$brief" "$kind: evidence payload incomplete"
+    assert_grep 'do not delegate, contact another worker directly, or transfer implementation ownership' "$brief" "$kind: worker gained specialist authority"
+    assert_grep 'answer directly or commission a focused scout' "$brief" "$kind: supervisor options missing"
+    assert_grep 'resolve-key reasoning-chunk' "$brief" "$kind: durable answer and keyed closure missing"
+  done
+
+  FM_HOME="$child" FM_SECONDMATE_CHARTER='Handle assigned domain work.' \
+    "$ROOT/bin/fm-brief.sh" mate --secondmate --no-projects >/dev/null \
+    || fail 'secondmate charter generation failed'
+  assert_no_grep 'blocked [key=reasoning-chunk]' "$child/data/mate/brief.md" \
+    'secondmate charter inherited ordinary worker escalation'
+  FM_HOME="$child" "$ROOT/bin/fm-brief.sh" child-ship fixture-project --mode direct-PR >/dev/null \
+    || fail 'secondmate crew brief generation failed'
+  assert_grep 'blocked [key=reasoning-chunk]' "$child/data/child-ship/brief.md" \
+    'secondmate crew did not inherit the shared reasoning contract'
+  assert_grep 'do not delegate, contact another worker directly' "$child/data/child-ship/brief.md" \
+    'secondmate crew received supervisor authority'
+  pass 'fm-brief: ordinary and secondmate crews share the bounded keyed reasoning escalation'
+}
+
 # Scout and secondmate paths still scaffold well-formed briefs.
 test_scout_and_secondmate_scaffold() {
   local brief
@@ -1490,6 +1534,7 @@ test_pause_verb_override_renders_all_brief_scaffolds
 test_ship_and_scout_teach_validation_round_pause
 test_scout_and_secondmate_load_decision_hold_policy
 test_scout_and_secondmate_scaffold
+test_reasoning_escalation_contract
 test_scout_lavish_line_follows_presentation_floor
 test_workers_wait_without_spending_turns
 test_wait_no_turns_absent_keeps_the_previous_brief

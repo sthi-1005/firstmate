@@ -1160,6 +1160,10 @@ test_promoted_scout_relaunch_receives_the_current_delivery_contract() {
       "$mode: the replacement launch did not receive the carry-over boundary"
     assert_grep "Delivery contract: mode=$mode" "$launch" \
       "$mode: the replacement launch did not receive the actual ship delivery mode"
+    assert_grep 'blocked [key=reasoning-chunk] [at=<epoch>]' "$launch" \
+      "$mode: the replacement launch lost the scout reasoning escalation"
+    assert_grep 'resolve-key reasoning-chunk' "$launch" \
+      "$mode: the replacement launch lost the keyed answer path"
   done
   pass "fm-promote/fm-spawn --relaunch: the current ship contract supersedes stale scout delivery text"
 }

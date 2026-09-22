@@ -410,6 +410,18 @@ if [ -e "$CONFIG/wait-no-turns" ]; then
   WAIT_BLOCK="$WAIT_SECTION"$'\n\n'
 fi
 
+# One escalation rule for ship and scout briefs; promotion preserves the scout
+# rules and relaunch reuses the durable brief rather than rendering new rules.
+IFS= read -r -d '' REASONING_RULE <<'EOF' || true
+5. Debug ordinary difficulties autonomously: elapsed time, a difficult question, or one failed hypothesis alone is not a reason to escalate.
+   After one bounded evidence pass, if a consequential subproblem is still underdetermined, or after two bounded attempts fail, or if multiple viable causal or design models remain whose choice could change correctness, architecture, security, scope, or accepted behavior, stop before speculative code churn.
+   Append one sparse `blocked [key=reasoning-chunk] [at=<epoch>]: {exact question; observed evidence; attempted counterfactuals; viable options; what would disconfirm each}` event to the status file and wait for your supervising mate's answer in the durable instruction inbox.
+   Keep the payload concise and specific enough for a focused specialist to investigate; do not delegate, contact another worker directly, or transfer implementation ownership.
+   Your supervising mate decides whether to answer directly or commission a focused scout, then routes the conclusion back to you through the inbox with `--resolve-key reasoning-chunk`, closing the keyed blocker at answer time.
+   For an ordinary non-reasoning obstacle hit twice, append `blocked [at=<epoch>]: {why}` and stop; your supervising mate will help.
+EOF
+REASONING_RULE=${REASONING_RULE%$'\n'}
+
 if [ "$KIND" = secondmate ]; then
 SECONDMATE_PROJECTS=""
 idx=1
@@ -627,7 +639,7 @@ The report is the only thing that survives, so anything worth keeping must be in
    https:// URL exactly as the forge printed it, never a bare number such as "PR 108"; firstmate
    copies that URL from your line rather than assembling one.
 $CREWMATE_PAUSE_INSTRUCTIONS
-5. If you hit the same obstacle twice, append \`blocked [at=<epoch>]: {why}\` and stop; firstmate will help.
+$REASONING_RULE
 6. If a decision belongs to a human (product choices, destructive actions),
    append \`needs-decision [at=<epoch>]: {summary of options}\` and stop. Firstmate will reply with the decision.
    A decision or blocker you opened stays open until a \`resolved\` line carrying its exact key lands; a later \`done:\` or \`working:\` line never closes it, even when the answer is what started that work.
@@ -706,7 +718,7 @@ $RULE1
    A mid-task \`working:\` line (including setup complete) is nonterminal: do not end the
    turn after it; continue the same stage until a defined \`done:\` gate under Definition of done.
 $CREWMATE_PAUSE_INSTRUCTIONS
-5. If you hit the same obstacle twice, append \`blocked [at=<epoch>]: {why}\` and stop; firstmate will help.
+$REASONING_RULE
 6. If a decision belongs above the implementation worker (product choices, destructive actions),
    append \`needs-decision [at=<epoch>]: {summary of options}\` and stop. Firstmate will reply with the decision.
 $ASK_USER_BLOCK
