@@ -2005,9 +2005,6 @@ contribution_tasks_json > "$CONTRIBUTION_TASKS_JSON_FILE" \
 jq -n --slurpfile backlog "$BACKLOG_JSON_FILE" --slurpfile tasks "$CONTRIBUTION_TASKS_JSON_FILE" \
   '{backlog:$backlog[0],tasks:$tasks[0]}' > "$CONTRIBUTION_INPUT_JSON_FILE" \
   || { echo "fm-fleet-snapshot: contribution input assembly failed" >&2; exit 1; }
-jq -e 'type == "object" and (.backlog | type == "object") and (.backlog.records | type == "array") and (.tasks | type == "array")' \
-  "$CONTRIBUTION_INPUT_JSON_FILE" >/dev/null \
-  || { echo "fm-fleet-snapshot: malformed contribution input" >&2; exit 1; }
 if [ "$OUTPUT_MODE" = contribution-input ]; then
   # No worker observations or cross-home collection on the read-only poll path.
   cat "$CONTRIBUTION_INPUT_JSON_FILE" \
