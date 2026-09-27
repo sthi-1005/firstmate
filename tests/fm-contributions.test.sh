@@ -1179,8 +1179,71 @@ test_retire_is_idempotent_and_refuses_unknown_pairs() {
   pass 'retire is idempotent and refuses non-captain, unknown, malformed and signal-bearing pairs'
 }
 
+test_large_contribution_input_transport() {
+  local home input full
+  home=$(new_home large-input)
+  # Generated data, not fleet records: the canonical backlog JSON exceeds the
+  # conservative 128 KiB single-argument boundary without a large fixture.
+  awk 'BEGIN { for (i=1; i<=1600; i++)
+    printf "- [ ] synthetic-%05d - Generated item %05d abcdefghijklmnopqrstuvwxyz (kind: ship)\n", i, i }' \
+    >> "$home/data/backlog.md"
+  input="$home/input.json"
+  with_home "$home" "$ROOT/bin/fm-fleet-snapshot.sh" --contribution-input > "$input" \
+    || fail 'large contribution input could not be collected'
+  [ "$(wc -c < "$input")" -gt 131072 ] || fail 'generated input did not exceed the argument boundary'
+  jq -e '.backlog.records | length == 1600' "$input" >/dev/null \
+    || fail 'large contribution input lost backlog rows'
+  full="$home/full.json"
+  with_home "$home" "$ROOT/bin/fm-fleet-snapshot.sh" --json > "$full" \
+    || fail 'full snapshot could not collect the same large input'
+  jq -ne --slurpfile input "$input" --slurpfile full "$full" \
+    '$input[0].backlog == $full[0].backlog and ($input[0].tasks | length) == 0 and ($full[0].tasks | length) == 0' \
+    >/dev/null || fail 'contribution and full snapshots diverged on the same backlog'
+  pass 'large canonical contribution input uses the same complete backlog as the full snapshot'
+}
+
+test_contribution_input_empty_and_unstructured() {
+  local home
+  home=$(new_home input-empty)
+  rm "$home/data/backlog.md"
+  with_home "$home" "$ROOT/bin/fm-fleet-snapshot.sh" --contribution-input \
+    | jq -e '.backlog.present == false and .backlog.records == [] and .tasks == []' >/dev/null \
+    || fail 'absent backlog was not represented as an empty canonical inventory'
+  printf '# Backlog\n\n## Queued\nnot a structured task\n' > "$home/data/backlog.md"
+  with_home "$home" "$ROOT/bin/fm-fleet-snapshot.sh" --contribution-input \
+    | jq -e '.backlog.present == true and (.backlog.records | length) == 1 and .backlog.records[0].structured == false' >/dev/null \
+    || fail 'unstructured backlog evidence was dropped'
+  pass 'empty and unstructured backlog inputs preserve canonical evidence'
+}
+
+test_contribution_input_tool_and_malformed_failure() {
+  local home real_jq
+  home=$(new_home input-failure)
+  real_jq=$(command -v jq)
+  cat > "$home/fakebin/jq" <<'SH'
+#!/usr/bin/env bash
+case " $* " in
+  *' --slurpfile backlog '*)
+    if [ "$INJECT_JQ" = malformed ]; then printf 'not-json\n'; exit 0; fi
+    exit 71 ;;
+esac
+exec "$REAL_JQ" "$@"
+SH
+  chmod +x "$home/fakebin/jq"
+  if REAL_JQ="$real_jq" INJECT_JQ=failed with_home "$home" "$ROOT/bin/fm-fleet-snapshot.sh" --contribution-input \
+    > "$home/out" 2> "$home/error"; then fail 'jq failure was silently accepted'; fi
+  grep -q 'contribution input assembly failed' "$home/error" \
+    || fail 'jq failure did not identify the failed assembly'
+  if REAL_JQ="$real_jq" INJECT_JQ=malformed with_home "$home" "$ROOT/bin/fm-fleet-snapshot.sh" --contribution-input \
+    > "$home/out" 2> "$home/error"; then fail 'malformed jq output was silently accepted'; fi
+  grep -q 'malformed contribution input' "$home/error" \
+    || fail 'malformed jq output did not identify the invalid input'
+  [ ! -s "$home/out" ] || fail 'failed assembly emitted partial contribution input'
+  pass 'tool failure and malformed assembly refuse contribution input without partial output'
+}
+
 failures=0
-for test_name in test_actor_coverage test_stale_verdict test_unchecked_is_not_silence test_newest_check_has_no_verdict test_comment_wake test_review_wake test_inline_wake test_ready_issue_wake test_fresh_issue_requires_maintainer test_missing_lane_remains_missing test_partial_freshness_keeps_measured_rows test_malformed_record_cannot_prove_silence test_issue_timeline_and_exact_ack test_verdict_retains_judged_head test_verdict_actor_values_are_discoverable test_observed_replacement_refreshes_verdict test_unobserved_head_leaves_verdict_unknown test_away_yolo_is_fleet_work test_away_yolo_cross_home_is_fleet_work test_retired_and_unsupported_coverage test_unsupported_forge_is_not_fleet_work test_held_unsupported_forge_is_not_captain_work test_shared_contribution_signal_wakes_once test_watcher_keeps_diagnostics_separate_from_contribution_wakes test_expired_child_unsupported_forge_stays_unmeasured test_watcher_surfaces_new_contribution_once test_home_summary_coverage test_unreadable_pending_is_not_empty test_record_task_identity_matches_dirname_basename test_read_only_views_create_no_state test_budget_refusal_between_calls test_budget_bounded_call_timeout test_genuine_failure_near_deadline_is_unavailable test_shared_url_observed_once test_terminal_contribution_settles test_late_owner_inherits_terminal_observation test_interrupted_multi_owner_poll_settles_every_owner test_done_task_open_pr_still_observed test_reservation_defers_later_url_when_fifteen_seconds_do_not_remain test_three_second_pr_reads_complete_fresh_in_one_cycle test_slow_read_deadline_kill_is_budget_refusal test_unmeasured_url_does_not_starve_the_tail test_budget_is_cut_down_to_the_watcher_check_bound test_arm_plumbs_a_configured_budget_into_the_check_shim test_unavailable_forge_records_error_and_wakes_once_per_episode test_late_owner_keeps_failure_episode_suppressed test_retire_ends_observation_of_a_gone_contribution test_late_owner_of_a_retired_final_contribution_is_not_retired test_retire_is_idempotent_and_refuses_unknown_pairs; do
+for test_name in test_large_contribution_input_transport test_contribution_input_empty_and_unstructured test_contribution_input_tool_and_malformed_failure test_actor_coverage test_stale_verdict test_unchecked_is_not_silence test_newest_check_has_no_verdict test_comment_wake test_review_wake test_inline_wake test_ready_issue_wake test_fresh_issue_requires_maintainer test_missing_lane_remains_missing test_partial_freshness_keeps_measured_rows test_malformed_record_cannot_prove_silence test_issue_timeline_and_exact_ack test_verdict_retains_judged_head test_observed_replacement_refreshes_verdict test_unobserved_head_leaves_verdict_unknown test_away_yolo_is_fleet_work test_away_yolo_cross_home_is_fleet_work test_retired_and_unsupported_coverage test_unsupported_forge_is_not_fleet_work test_held_unsupported_forge_is_not_captain_work test_shared_contribution_signal_wakes_once test_watcher_keeps_diagnostics_separate_from_contribution_wakes test_expired_child_unsupported_forge_stays_unmeasured test_watcher_surfaces_new_contribution_once test_home_summary_coverage test_unreadable_pending_is_not_empty test_record_task_identity_matches_dirname_basename test_read_only_views_create_no_state test_budget_refusal_between_calls test_budget_bounded_call_timeout test_genuine_failure_near_deadline_is_unavailable test_shared_url_observed_once test_terminal_contribution_settles test_late_owner_inherits_terminal_observation test_interrupted_multi_owner_poll_settles_every_owner test_done_task_open_pr_still_observed test_reservation_defers_later_url_when_fifteen_seconds_do_not_remain test_three_second_pr_reads_complete_fresh_in_one_cycle test_slow_read_deadline_kill_is_budget_refusal test_unmeasured_url_does_not_starve_the_tail test_budget_is_cut_down_to_the_watcher_check_bound test_arm_plumbs_a_configured_budget_into_the_check_shim test_unavailable_forge_records_error_and_wakes_once_per_episode test_late_owner_keeps_failure_episode_suppressed test_retire_ends_observation_of_a_gone_contribution test_late_owner_of_a_retired_final_contribution_is_not_retired test_retire_is_idempotent_and_refuses_unknown_pairs; do
   ( "$test_name" ) || failures=$((failures + 1))
 done
 [ "$failures" -eq 0 ] || fail "$failures contribution regressions"

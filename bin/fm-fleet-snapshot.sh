@@ -1991,37 +1991,43 @@ contribution_tasks_json() {
   done | jq -s .
 }
 
+JSON_TRANSPORT_DIR=$(umask 077; mktemp -d "${TMPDIR:-/tmp}/fm-fleet-snapshot.XXXXXX") \
+  || { echo "fm-fleet-snapshot: temporary transport directory creation failed" >&2; exit 1; }
+BACKLOG_JSON_FILE="$JSON_TRANSPORT_DIR/backlog.json"
+CONTRIBUTION_TASKS_JSON_FILE="$JSON_TRANSPORT_DIR/contribution-tasks.json"
+CONTRIBUTION_INPUT_JSON_FILE="$JSON_TRANSPORT_DIR/contribution-input.json"
+printf '%s\n' "$BACKLOG_JSON" > "$BACKLOG_JSON_FILE" \
+  || { echo "fm-fleet-snapshot: temporary backlog file write failed" >&2; exit 1; }
+contribution_tasks_json > "$CONTRIBUTION_TASKS_JSON_FILE" \
+  || { echo "fm-fleet-snapshot: contribution task read failed" >&2; exit 1; }
+# Both the local contribution poll and full snapshot use this same canonical
+# ownership pair. Keep potentially large backlog and task JSON off jq's argv.
+jq -n --slurpfile backlog "$BACKLOG_JSON_FILE" --slurpfile tasks "$CONTRIBUTION_TASKS_JSON_FILE" \
+  '{backlog:$backlog[0],tasks:$tasks[0]}' > "$CONTRIBUTION_INPUT_JSON_FILE" \
+  || { echo "fm-fleet-snapshot: contribution input assembly failed" >&2; exit 1; }
+jq -e 'type == "object" and (.backlog | type == "object") and (.backlog.records | type == "array") and (.tasks | type == "array")' \
+  "$CONTRIBUTION_INPUT_JSON_FILE" >/dev/null \
+  || { echo "fm-fleet-snapshot: malformed contribution input" >&2; exit 1; }
 if [ "$OUTPUT_MODE" = contribution-input ]; then
-  # Reuse the canonical backlog parser, without observing workers or other homes.
-  contribution_tasks=$(contribution_tasks_json) || { echo "fm-fleet-snapshot: contribution task read failed" >&2; exit 1; }
-  jq -n --argjson backlog "$BACKLOG_JSON" --argjson tasks "$contribution_tasks" '{backlog:$backlog,tasks:$tasks}'
+  # No worker observations or cross-home collection on the read-only poll path.
+  cat "$CONTRIBUTION_INPUT_JSON_FILE" \
+    || { echo "fm-fleet-snapshot: contribution input read failed" >&2; exit 1; }
   exit 0
 fi
 prefetch_task_current_states || { echo "fm-fleet-snapshot: task observation failed" >&2; exit 1; }
 TASKS_JSON=$(task_json_lines) || { echo "fm-fleet-snapshot: task snapshot failed" >&2; exit 1; }
 
-JSON_TRANSPORT_DIR=$(mktemp -d "${TMPDIR:-/tmp}/fm-fleet-snapshot.XXXXXX") \
-  || { echo "fm-fleet-snapshot: temporary transport directory creation failed" >&2; exit 1; }
-BACKLOG_JSON_FILE="$JSON_TRANSPORT_DIR/backlog.json"
 TASKS_JSON_FILE="$JSON_TRANSPORT_DIR/tasks.json"
 MAIN_INVENTORY_JSON_FILE="$JSON_TRANSPORT_DIR/main-inventory.json"
 SCOUT_REPORTS_JSON_FILE="$JSON_TRANSPORT_DIR/scout-reports.json"
 SECONDMATE_CURRENT_JSON_FILE="$JSON_TRANSPORT_DIR/secondmate-current.json"
 SECONDMATE_LANDED_JSON_FILE="$JSON_TRANSPORT_DIR/secondmate-landed.json"
-printf '%s\n' "$BACKLOG_JSON" > "$BACKLOG_JSON_FILE" \
-  || { echo "fm-fleet-snapshot: temporary backlog file write failed" >&2; exit 1; }
 printf '%s\n' "$TASKS_JSON" > "$TASKS_JSON_FILE" \
   || { echo "fm-fleet-snapshot: temporary task file write failed" >&2; exit 1; }
 
 CONTRIBUTIONS_JSON_FILE="$JSON_TRANSPORT_DIR/contributions.json"
-CONTRIBUTION_TASKS_JSON=$(contribution_tasks_json) \
-  || { echo "fm-fleet-snapshot: contribution task read failed" >&2; exit 1; }
-printf '%s\n' "$CONTRIBUTION_TASKS_JSON" > "$JSON_TRANSPORT_DIR/contribution-tasks.json" \
-  || { echo "fm-fleet-snapshot: contribution task staging failed" >&2; exit 1; }
-jq -n --slurpfile backlog "$BACKLOG_JSON_FILE" --slurpfile tasks "$JSON_TRANSPORT_DIR/contribution-tasks.json" \
-  '{backlog:$backlog[0],tasks:$tasks[0]}' > "$JSON_TRANSPORT_DIR/contribution-input.json"
 FM_CONTRIBUTIONS_NOW="$SNAPSHOT_NOW" "$SCRIPT_DIR/fm-contributions.sh" snapshot \
-  "$JSON_TRANSPORT_DIR/contribution-input.json" > "$CONTRIBUTIONS_JSON_FILE" \
+  "$CONTRIBUTION_INPUT_JSON_FILE" > "$CONTRIBUTIONS_JSON_FILE" \
   || { echo "fm-fleet-snapshot: contribution coverage unavailable" >&2; exit 1; }
 
 if [ "$OUTPUT_MODE" = secondmate-home-summary ]; then
