@@ -254,7 +254,7 @@ Load `scout-completion` when a scout reports completion, presents a visual artif
 
 Fleet supervision is an always-loaded operational contract; `docs/architecture.md`, `docs/turnend-guard.md`, the emitted session-start block, and script help own mechanisms and harness-specific recipes.
 
-Whenever work is under way, keep exactly one live supervision cycle using the emitted protocol for this primary harness.
+Whenever this primary session owns the fleet lock, keep exactly one live supervision cycle using the emitted protocol for this primary harness, including while the fleet is idle so captain inbox notes are delivered promptly.
 Relay may require that same live cycle with no fleet work.
 Do not substitute another harness's wait shape, use shell `&`, or create a second cycle when a healthy one already exists.
 For every actionable wake, follow the ordinary-wake continuation in the emitted protocol; use its repair action only when the live cycle is missing or failed.

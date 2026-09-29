@@ -19,6 +19,7 @@ set -u
 WATCH="$ROOT/bin/fm-watch.sh"
 WATCH_ARM="$ROOT/bin/fm-watch-arm.sh"
 DRAIN="$ROOT/bin/fm-wake-drain.sh"
+INBOX="$ROOT/bin/fm-inbox.sh"
 
 TMP_ROOT=$(fm_test_tmproot fm-watch-arm-tests)
 
@@ -821,6 +822,33 @@ test_append_wakes_live_announced_watcher() {
   pass "watch-arm: appending an inbox row wakes an announced live watcher"
 }
 
+test_idle_home_keeps_inbox_delivery_live() {
+  local dir home state fakebin out id
+  dir=$(make_case idle-inbox-delivery)
+  home="$dir/home"
+  state="$dir/state"
+  fakebin="$dir/fakebin"
+  out="$dir/arm.out"
+  mkdir -p "$home/data" "$state/inbox"
+
+  FM_HOME="$home" bash -c '
+    . "$1/bin/fm-supervision-lib.sh"
+    fm_supervision_needed "$2"
+  ' _ "$ROOT" "$state" || fail "an idle registered captain inbox did not keep supervision needed"
+  start_rearm_arm "$home" "$state" "$fakebin" "$out"
+  is_live_non_zombie "$ARM_PID" || fail "an idle inbox home did not retain a live watcher"
+  id=$(FM_HOME="$home" FM_STATE_OVERRIDE="$state" "$INBOX" note \
+    --request-id idle-inbox-1 --json 'idle delivery' \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])') \
+    || fail "idle inbox submission failed"
+  wait_for_exit "$ARM_PID" 80 || fail "the idle home's watcher did not deliver the inbox note"
+  grep -Fx "check: captain inbox note queued: inbox:$id" "$out" >/dev/null \
+    || fail "idle inbox delivery omitted the exact durable key: $(cat "$out")"
+  grep -F "$(printf '\tcheck\tinbox:%s\t' "$id")" "$state/.wake-queue" >/dev/null \
+    || fail "idle inbox delivery removed the durable queue row"
+  pass "watch-arm: an idle registered home delivers a new captain inbox note"
+}
+
 # Exercise the handling-window recovery invariant owned by
 # docs/watcher-continuity.md through real watcher processes.
 test_handling_window_close_keeps_the_acknowledgement_valid() {
@@ -1213,6 +1241,7 @@ test_restart_preserves_recovery_across_reused_pid_lock
 test_markerless_legacy_queue_is_recovered_on_arm
 test_idle_lavish_source_stays_quiet_until_result
 test_append_wakes_live_announced_watcher
+test_idle_home_keeps_inbox_delivery_live
 test_handling_window_close_keeps_the_acknowledgement_valid
 test_moved_generation_acknowledgement_is_self_healing
 test_downtime_marker_does_not_follow_symlink
