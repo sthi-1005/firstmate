@@ -814,11 +814,11 @@ test_append_wakes_live_announced_watcher() {
     || fail "the generic producer could not append its wake"
   wait_for_exit "$ARM_PID" 80 \
     || fail "the live watcher stranded work appended after an empty recovery"
-  grep -F 'check: rearm-resurface' "$idle_out" >/dev/null \
-    || fail "the appended wake did not reopen recovery: $(cat "$idle_out")"
+  grep -Fx 'check: captain inbox note queued: inbox:fixture' "$idle_out" >/dev/null \
+    || fail "the live watcher did not surface the appended inbox row: $(cat "$idle_out")"
   grep "$(printf '\tcheck\tinbox:fixture\t')" "$state/.wake-queue" >/dev/null \
-    || fail "the appended wake was not durable when recovery surfaced"
-  pass "watch-arm: appending work reopens an announced empty recovery"
+    || fail "the appended wake was not durable when the inbox notification surfaced"
+  pass "watch-arm: appending an inbox row wakes an announced live watcher"
 }
 
 # Exercise the handling-window recovery invariant owned by

@@ -5803,6 +5803,186 @@ procevent_watch_bg() {  # <dir> <out>
     FM_POLL=0.2 FM_SIGNAL_GRACE=1 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 "$WATCH" > "$out" &
 }
 
+inbox_case_note() {  # <dir> <request-id>
+  FM_HOME="$1" "$ROOT/bin/fm-inbox.sh" note --request-id "$2" --json 'review annotation' \
+    | python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["saved"] and r["announced"]; print(r["id"])'
+}
+
+# Handling successors already have the predecessor's notification in flight:
+# exercise only the new-key surfacer rather than the independent downtime replay.
+inbox_watch_bg() {  # <dir> <out> [handling-successor]
+  local dir=$1 out=$2 successor=${3:-0}
+  dir=$(cd "$dir" && pwd -P) || return 1
+  PATH="$dir/fakebin:$PATH" FM_HOME="$dir" FM_WATCH_HANDLING_SUCCESSOR="$successor" \
+    FM_CREW_STATE_BIN="$dir/fakebin/fm-crew-state.sh" \
+    FM_POLL=0.2 FM_SIGNAL_GRACE=1 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 "$WATCH" > "$out" &
+}
+
+test_inbox_note_interrupts_running_watcher() {
+  local dir state out pid id replay
+  dir=$(make_case inbox-live-delivery); state="$dir/state"; out="$dir/watch.out"
+  inbox_watch_bg "$dir" "$out"
+  pid=$!
+  wait_poll_cycle "$state" "$pid" || fail "inbox watcher did not begin polling before submission"
+  id=$(inbox_case_note "$dir" inbox-live-1) || fail "real idempotent inbox intake failed"
+  wait_for_exit "$pid" 100 || fail "an already-running watcher missed a fresh inbox note: $(cat "$out")"
+  grep -Fx "check: captain inbox note queued: inbox:$id" "$out" >/dev/null \
+    || fail "notification did not name the exact inbox queue key: $(cat "$out")"
+  grep -F "$(printf '\tcheck\tinbox:%s\t' "$id")" "$state/.wake-queue" >/dev/null \
+    || fail "notification removed the unacknowledged queue row"
+  [ -f "$state/inbox/$id.note" ] || fail "notification consumed the pending note"
+  [ "$(find "$state" -maxdepth 1 -name '.seen-inbox-*' -type f | wc -l | tr -d ' ')" = 1 ] \
+    || fail "successful output did not create exactly one surfaced marker"
+
+  replay="$dir/replay.out"
+  inbox_watch_bg "$dir" "$replay" 1
+  pid=$!
+  wait_poll_cycle "$state" "$pid" || fail "already-surfaced note woke again: $(cat "$replay")"
+  reap "$pid"
+  [ ! -s "$replay" ] || fail "repeated notification while the note remained pending: $(cat "$replay")"
+  FM_HOME="$dir" "$ROOT/bin/fm-inbox.sh" drain --ack "$id" >/dev/null \
+    || fail "could not acknowledge the note through the ordinary inbox command"
+  ack_stopped_cycle "$state" || fail "could not acknowledge the queue row through the ordinary drain"
+  [ ! -s "$state/.wake-queue" ] || fail "acked inbox check remains queued"
+  inbox_watch_bg "$dir" "$replay" 1
+  pid=$!
+  wait_poll_cycle "$state" "$pid" || fail "acknowledged note woke a later watcher: $(cat "$replay")"
+  reap "$pid"
+  [ ! -s "$replay" ] || fail "acknowledged note re-notified: $(cat "$replay")"
+  pass "real inbox capture interrupts an already-running watcher exactly once until ordinary acknowledgement"
+}
+
+test_inbox_batch_and_failed_output_replay() {
+  local dir state out pid first second
+  dir=$(make_case inbox-batch-delivery); state="$dir/state"; out="$dir/watch.out"
+  first=$(inbox_case_note "$dir" inbox-batch-1) || fail "first batch note failed"
+  second=$(inbox_case_note "$dir" inbox-batch-2) || fail "second batch note failed"
+  append_wake "$state" check other:fixture 'check: unrelated fixture' \
+    || fail "unrelated check fixture could not be queued"
+  inbox_watch_bg "$dir" "$out" 1
+  pid=$!
+  wait_for_exit "$pid" 100 || fail "two queued notes did not wake the watcher"
+  grep -Fx "check: captain inbox note queued: inbox:$first inbox:$second" "$out" >/dev/null \
+    || fail "two pending inbox identities were not notified together: $(cat "$out")"
+  [ "$(find "$state" -maxdepth 1 -name '.seen-inbox-*' -type f | wc -l | tr -d ' ')" = 2 ] \
+    || fail "the two keys did not receive distinct surfaced markers"
+  FM_STATE_OVERRIDE="$state" "$DRAIN" > "$dir/drain.out" 2>/dev/null || fail "batch drain failed"
+  grep -F "inbox:$first" "$dir/drain.out" >/dev/null || fail "first row absent from batch drain"
+  grep -F "inbox:$second" "$dir/drain.out" >/dev/null || fail "second row absent from batch drain"
+  grep -F 'other:fixture' "$dir/drain.out" >/dev/null \
+    || fail "unrelated check was consumed or reclassified by inbox notification"
+
+  dir=$(make_case inbox-failed-output); state="$dir/state"; out="$dir/watch.err"
+  first=$(inbox_case_note "$dir" inbox-retry-1) || fail "failure fixture note failed"
+  PATH="$dir/fakebin:$PATH" FM_HOME="$dir" FM_WATCH_HANDLING_SUCCESSOR=1 \
+    FM_CREW_STATE_BIN="$dir/fakebin/fm-crew-state.sh" FM_POLL=0.2 FM_SIGNAL_GRACE=1 \
+    FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 "$WATCH" >&- 2> "$out" &
+  pid=$!
+  local rc=0
+  wait_for_exit "$pid" 100 || rc=$?
+  [ "$rc" -eq 1 ] || fail "failed notification output did not exit nonzero (rc=$rc): $(cat "$out")"
+  [ ! -e "$(printf '%s/.seen-inbox-%s' "$state" "$(printf 'inbox:%s' "$first" | LC_ALL=C od -An -tx1 | tr -d ' \n')")" ] \
+    || fail "failed delivery committed a surfaced marker"
+  grep -F "inbox:$first" "$state/.wake-queue" >/dev/null || fail "failed output lost the durable row"
+  inbox_watch_bg "$dir" "$dir/retry.out" 1
+  pid=$!
+  wait_for_exit "$pid" 100 || fail "replacement watcher did not retry the undelivered note"
+  grep -Fx "check: captain inbox note queued: inbox:$first" "$dir/retry.out" >/dev/null \
+    || fail "retry did not deliver the same exact key: $(cat "$dir/retry.out")"
+  pass "two queued notes coalesce without losing identity, and failed output retries after replacement"
+}
+
+test_inbox_append_during_notification_reaches_successor() {
+  local dir state pid second_pid first second i=0
+  dir=$(make_case inbox-append-race); state="$dir/state"
+  first=$(inbox_case_note "$dir" inbox-race-1) || fail "first race note failed"
+  # Instrument only the shell's output boundary, not the watcher code: the
+  # second real note is created while the first watcher holds the queue lock.
+  cat > "$dir/pause-echo.sh" <<'SH'
+echo() {
+  case "${1:-}" in
+    'check: captain inbox note queued:'*)
+      : > "$FM_INBOX_ECHO_BOUNDARY"
+      while [ ! -e "$FM_INBOX_ECHO_RELEASE" ]; do sleep 0.1; done
+      ;;
+  esac
+  builtin echo "$@"
+}
+SH
+  PATH="$dir/fakebin:$PATH" BASH_ENV="$dir/pause-echo.sh" FM_HOME="$dir" \
+    FM_WATCH_HANDLING_SUCCESSOR=1 FM_INBOX_ECHO_BOUNDARY="$dir/echo-entered" \
+    FM_INBOX_ECHO_RELEASE="$dir/echo-release" \
+    FM_CREW_STATE_BIN="$dir/fakebin/fm-crew-state.sh" FM_POLL=0.2 FM_SIGNAL_GRACE=1 \
+    FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 "$WATCH" > "$dir/first.out" &
+  pid=$!
+  while [ ! -e "$dir/echo-entered" ] && [ "$i" -lt 100 ]; do sleep 0.1; i=$((i + 1)); done
+  [ -e "$dir/echo-entered" ] || fail "the watcher never reached the output boundary"
+  FM_HOME="$dir" "$ROOT/bin/fm-inbox.sh" note --request-id inbox-race-2 --json 'second annotation' \
+    > "$dir/second.json" &
+  second_pid=$!
+  i=0
+  while [ "$(find "$state/inbox" -maxdepth 1 -name '*.note' | wc -l | tr -d ' ')" -lt 2 ] && [ "$i" -lt 100 ]; do
+    sleep 0.1; i=$((i + 1))
+  done
+  [ "$i" -lt 100 ] || fail "the second note did not save while the first was being delivered"
+  : > "$dir/echo-release"
+  wait_for_exit "$pid" 100 || fail "the first watcher failed to notify"
+  wait "$second_pid" || fail "the second note could not finish announcing"
+  second=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' < "$dir/second.json")
+  grep -Fx "check: captain inbox note queued: inbox:$first" "$dir/first.out" >/dev/null \
+    || fail "the first notification did not hold the initial snapshot"
+  inbox_watch_bg "$dir" "$dir/second.out" 1
+  pid=$!
+  wait_for_exit "$pid" 100 || fail "the successor failed to notify the appended note"
+  grep -Fx "check: captain inbox note queued: inbox:$second" "$dir/second.out" >/dev/null \
+    || fail "the successor omitted or repeated a key: $(cat "$dir/second.out")"
+  pass "a second inbox note arriving during notification is announced on the next cycle"
+}
+
+test_inbox_marker_failure_replays_safely() {
+  local dir state out pid id marker i=0
+  dir=$(make_case inbox-marker-retry); state="$dir/state"; out="$dir/first.out"
+  id=$(inbox_case_note "$dir" inbox-marker-1) || fail "marker retry note failed"
+  marker="$state/.seen-inbox-$(printf 'inbox:%s' "$id" | LC_ALL=C od -An -tx1 | tr -d ' \n')"
+  cat > "$dir/pause-echo.sh" <<'SH'
+echo() {
+  case "${1:-}" in
+    'check: captain inbox note queued:'*)
+      : > "$FM_INBOX_ECHO_BOUNDARY"
+      while [ ! -e "$FM_INBOX_ECHO_RELEASE" ]; do sleep 0.1; done
+      ;;
+  esac
+  builtin echo "$@"
+}
+SH
+  PATH="$dir/fakebin:$PATH" BASH_ENV="$dir/pause-echo.sh" FM_HOME="$dir" \
+    FM_WATCH_HANDLING_SUCCESSOR=1 FM_INBOX_ECHO_BOUNDARY="$dir/echo-entered" \
+    FM_INBOX_ECHO_RELEASE="$dir/echo-release" \
+    FM_CREW_STATE_BIN="$dir/fakebin/fm-crew-state.sh" FM_POLL=0.2 FM_SIGNAL_GRACE=1 \
+    FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 "$WATCH" > "$out" 2> "$dir/first.err" &
+  pid=$!
+  while [ ! -e "$dir/echo-entered" ] && [ "$i" -lt 100 ]; do sleep 0.1; i=$((i + 1)); done
+  [ -e "$dir/echo-entered" ] || fail "watcher never reached marker-failure boundary"
+  mkdir "$marker" || fail "could not obstruct marker publication"
+  : > "$dir/echo-release"
+  wait_for_exit "$pid" 100 || fail "notification output itself failed during marker obstruction"
+  grep -Fx "check: captain inbox note queued: inbox:$id" "$out" >/dev/null \
+    || fail "the initial notification was not emitted"
+  [ -d "$marker" ] || fail "the blocked marker was unexpectedly replaced"
+  [ -f "$state/inbox/$id.note" ] || fail "marker obstruction removed the pending note"
+  rmdir "$marker"
+  inbox_watch_bg "$dir" "$dir/retry.out" 1
+  pid=$!
+  wait_for_exit "$pid" 100 || fail "marker failure was not retried by the successor"
+  grep -Fx "check: captain inbox note queued: inbox:$id" "$dir/retry.out" >/dev/null \
+    || fail "retry did not preserve the same inbox identity"
+  FM_HOME="$dir" "$ROOT/bin/fm-inbox.sh" drain --ack "$id" >/dev/null \
+    || fail "retry note could not be handled once"
+  ack_stopped_cycle "$state" || fail "retry row could not be acknowledged"
+  [ ! -s "$state/.wake-queue" ] || fail "retry left a duplicate queue row"
+  pass "marker-publication failure preserves one durable note for safe successor replay"
+}
+
 test_procevent_captured_result_surfaces_proactively() {
   local dir state out drain_out pid beacon_age
   dir=$(make_case procevent-delivery); state="$dir/state"
@@ -6728,6 +6908,10 @@ test_secondmate_home_supervision_churn_is_not_write_evidence
 test_timer_repair_drops_a_finished_write_deferral_chain
 test_terminal_first_sight_drops_a_finished_write_deferral_chain
 test_triage_log_size_cap_accepts_spaced_wc_counts
+test_inbox_note_interrupts_running_watcher
+test_inbox_batch_and_failed_output_replay
+test_inbox_append_during_notification_reaches_successor
+test_inbox_marker_failure_replays_safely
 test_procevent_captured_result_surfaces_proactively
 test_procevent_unacknowledged_result_redrains_until_handled
 test_procevent_marker_keys_are_injective

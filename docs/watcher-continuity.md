@@ -181,6 +181,9 @@ The next Stop then re-arms as before.
 ### Durable queue and turn-end backstop
 
 The durable wake queue preserves actionable events between a watcher close and the next drain.
+An already-running watcher surfaces newly queued `inbox:<note-id>` checks as one actionable main-owned notification for the unsurfaced identities, even without a worker signal or primary turn.
+Its queue-locked one-shot marker is committed only after notification output succeeds; the note and queue row remain pending for ordinary inbox and drain acknowledgement, and a handling successor can deliver an inbox row appended during the preceding notification.
+Process-event queued checks retain their separate surfacing path.
 The bounded turn-end guard enforces recovery at Stop when no watcher is live and no open generation claim is still deciding.
 So a finished, hung, or identity-mismatched claim cannot suppress that recovery ([`turnend-guard.md`](turnend-guard.md#harness-integrations) owns that boundary).
 

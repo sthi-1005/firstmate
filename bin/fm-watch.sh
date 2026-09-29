@@ -2015,6 +2015,54 @@ procevent_surface_after_output() {
   return "$status"
 }
 
+# Inbox capture appends its check under the queue lock, but does not interrupt a
+# watcher already polling. Surface each exact queued key once; leave the row
+# and note for main's ordinary drain and inbox acknowledgement. The queue lock
+# spans scan, output, and marker publication so a second note arriving during
+# delivery waits for the next poll/handling successor instead of being missed.
+inbox_surfaced_marker() {  # <queue-key>
+  printf '%s/.seen-inbox-%s' "$STATE" "$(printf '%s' "$1" | LC_ALL=C od -An -tx1 | tr -d ' \n')"
+}
+
+inbox_surface_after_output() {  # <echo-status>
+  local output_status=$1 key marker tmp status=0
+  if [ "$output_status" -eq 0 ]; then
+    for key in $INBOX_SURFACED; do
+      marker=$(inbox_surfaced_marker "$key")
+      # Refuse an obstructed destination: mv to an existing directory would
+      # silently put the temp file *inside* it and suppress every later poll.
+      if [ -e "$marker" ] || [ -L "$marker" ]; then status=1; continue; fi
+      tmp=$(umask 077; mktemp "$STATE/.seen-inbox.XXXXXX") || { status=1; continue; }
+      if ! mv -f -- "$tmp" "$marker"; then
+        rm -f -- "$tmp"
+        status=1
+      fi
+    done
+  fi
+  fm_lock_release "$FM_WAKE_QUEUE_LOCK"
+  return "$status"
+}
+
+inbox_surface_queued() {
+  local key marker
+  INBOX_SURFACED=
+  [ -s "$FM_WAKE_QUEUE" ] || return 0
+  fm_lock_acquire_wait "$FM_WAKE_QUEUE_LOCK"
+  while IFS= read -r key; do
+    case "$key" in inbox:*) ;; *) continue ;; esac
+    marker=$(inbox_surfaced_marker "$key")
+    [ -f "$marker" ] && [ ! -L "$marker" ] && continue
+    INBOX_SURFACED="$INBOX_SURFACED $key"
+  done < <(fm_wake_queued_keys_locked check)
+  if [ -z "$INBOX_SURFACED" ]; then
+    fm_lock_release "$FM_WAKE_QUEUE_LOCK"
+    return 0
+  fi
+  # shellcheck disable=SC2034 # Consumed by wake() in the separately linted transition owner.
+  FM_WAKE_POST_OUTPUT_ACTION=inbox_surface_after_output
+  wake "check: captain inbox note queued:$INBOX_SURFACED"
+}
+
 procevent_surface_queued() {
   local key reason captured="" stranded="" unstarted=""
   PROCEVENT_SURFACED=
@@ -2680,9 +2728,10 @@ while :; do
   if [ -d "$STATE/procevent" ]; then
     FM_HOME="$FM_HOME" "$SCRIPT_DIR/fm-procevent.sh" reconcile >/dev/null 2>&1 || true
   fi
-  # Then deliver any queued-but-unsurfaced result, including one a runner
-  # published while this watcher was between cycles.
+  # Deliver queued-but-unsurfaced process-event results and captain inbox
+  # notes even when no other signal or primary turn occurs.
   procevent_surface_queued
+  inbox_surface_queued
 
   # A process-event result carries richer adapter-owned wake context than the
   # generic recovery reason, so give that owner first refusal.
