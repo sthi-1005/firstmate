@@ -441,6 +441,7 @@ They also prove that a legacy or handoff-phase watcher marker from an absent rep
 - A persistent live successor after recovery.
 - An idle live Lavish source that stays quiet until its real result wakes promptly.
 - An append that reopens an announced empty recovery.
+- A registered idle captain inbox that retains a live cycle and delivers a newly appended note without another primary turn.
 - A watcher close inside the handling window that must leave the printed acknowledgement valid.
 - A re-arm whose recovery cycle is slowed after confirmation and must still surface rather than read as a watcher that stayed live.
 - The self-healing moved-generation acknowledgement that consumes its handled rows and names its remedy.
@@ -456,6 +457,9 @@ They also prove that a legacy or handoff-phase watcher marker from an absent rep
 `tests/fm-watch-triage.test.sh` proves TERM stops a watcher blocked inside a poll's pane capture and still releases its lock and records an acknowledgeable stop.
 It also exercises a single TERM with a live foreign downtime-marker lock holder, retained stale singleton and subsequent arm-style recovery, including decimal `08` and zero `00` cleanup bounds.
 It checks that a newly appended keyed decision is classified without rereading earlier status bytes, so signal handling can return to the watcher's beacon refresh even when the status history is long.
+It also proves that captain inbox notes interrupt a live watcher, coalesce without losing identities, remain pending for ordinary acknowledgement, retry after notification or marker-publication failure, and hand a note appended during notification to the next cycle.
+
+`tests/fm-session-start.test.sh` and `tests/fm-turnend-guard.test.sh` prove that a locked session registers inbox reception and that the registration counts as supervision need without fabricating in-flight work.
 
 `tests/fm-watcher-lock.test.sh` covers:
 

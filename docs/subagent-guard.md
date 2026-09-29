@@ -373,10 +373,10 @@ Wiring Grok properly still requires the matcher-token verification described abo
 The same exception now also covers Cursor, which loads the tracked Claude settings as well: `.cursor/hooks.json` registers no subagent-spawn matcher, so this entry stays unguarded there for the same reason, and its `--claude` rendering leaves Cursor the exit-2 and stderr path rather than Cursor's own decision object.
 Cursor's subagent tool name has not been verified, and registering an unverified matcher would be a guess rather than coverage, so closing it needs the same verification step.
 
-This change does not close the deeper harness-agnostic defect.
+The captain-inbox continuity change keeps a locked primary supervised even with no accounted work, but it does not make untracked project work visible to the fleet.
 Every firstmate guard's in-flight-work branch keys off `state/<id>.meta`, and only `bin/fm-spawn.sh` writes that record.
-`bin/fm-supervision-lib.sh` also recognizes a Relay poll as supervision need, but unaccounted primary work still contributes nothing to that predicate.
-Without an independent Relay need, unaccounted primary work therefore reads as idle rather than suspicious.
+`bin/fm-supervision-lib.sh` also recognizes registered captain inbox reception and a Relay poll as supervision need, but unaccounted primary work still contributes nothing to its in-flight count.
+Unaccounted primary work therefore still reads as absent rather than suspicious even though inbox reception now keeps the supervision cycle live.
 
 The durable fix for that class is to make the guards treat "the primary is doing project-shaped work with zero `state/*.meta` files" as a suspicious state rather than an idle one.
 That would catch this class on any harness, including work created through `Bash`.
