@@ -363,6 +363,7 @@ test_pi_startup_classifies_cli_continuations() {
   }
   fixture="$TMP_ROOT/pi-continuation-source"
   mkdir -p "$fixture/.pi/extensions/lib" "$fixture/bin" "$fixture/state"
+  cp "$ROOT/.pi/extensions/lib/fm-primary-ownership.ts" "$fixture/.pi/extensions/lib/"
   cp "$ROOT/.pi/extensions/fm-primary-turnend-guard.ts" "$fixture/.pi/extensions/"
   cp "$ROOT/.pi/extensions/lib/fm-operational-input.ts" \
     "$ROOT/.pi/extensions/lib/fm-sessionstart-supervisor.mjs" "$fixture/.pi/extensions/lib/"
@@ -461,6 +462,7 @@ test_pi_sessionstart_generation_prerequisite() {
   }
   fixture="$TMP_ROOT/pi-sessionstart-generation"
   mkdir -p "$fixture/.pi/extensions/lib" "$fixture/bin" "$fixture/state"
+  cp "$ROOT/.pi/extensions/lib/fm-primary-ownership.ts" "$fixture/.pi/extensions/lib/"
   cp "$ROOT/.pi/extensions/fm-primary-turnend-guard.ts" "$fixture/.pi/extensions/"
   cp "$ROOT/.pi/extensions/lib/fm-operational-input.ts" \
     "$ROOT/.pi/extensions/lib/fm-sessionstart-supervisor.mjs" "$fixture/.pi/extensions/lib/"
@@ -787,6 +789,7 @@ test_pi_reload_releases_sessionstart_exit_listener() {
   }
   fixture="$TMP_ROOT/pi-reload-exit-listener"
   mkdir -p "$fixture/.pi/extensions/lib" "$fixture/bin" "$fixture/state"
+  cp "$ROOT/.pi/extensions/lib/fm-primary-ownership.ts" "$fixture/.pi/extensions/lib/"
   cp "$ROOT/.pi/extensions/fm-primary-turnend-guard.ts" "$fixture/.pi/extensions/"
   cp "$ROOT/.pi/extensions/lib/fm-operational-input.ts" \
     "$ROOT/.pi/extensions/lib/fm-sessionstart-supervisor.mjs" "$fixture/.pi/extensions/lib/"
@@ -921,6 +924,7 @@ test_pi_large_sessionstart_digest_is_delivered_loudly() {
   git init -q -b main "$fixture"
   git -C "$fixture" commit -q --allow-empty -m init
   : > "$fixture/AGENTS.md"
+  cp "$ROOT/.pi/extensions/lib/fm-primary-ownership.ts" "$fixture/.pi/extensions/lib/"
   cp "$ROOT/.pi/extensions/fm-primary-turnend-guard.ts" "$fixture/.pi/extensions/"
   cp "$ROOT/.pi/extensions/lib/fm-operational-input.ts" \
     "$ROOT/.pi/extensions/lib/fm-sessionstart-supervisor.mjs" "$fixture/.pi/extensions/lib/"

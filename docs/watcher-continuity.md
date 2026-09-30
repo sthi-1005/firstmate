@@ -46,6 +46,7 @@ A failed follow-up never cancels continuity restoration.
 
 ### Pi session replacement
 
+Pi primary-evidence admission is owned by `.pi/extensions/lib/fm-primary-ownership.ts`; [runtime verification](verification/runtime-backends.md#pi-primary-evidence-admission) records its portable and token-free live checks.
 Pi same-process session replacement follows the generation-owner contract in `.pi/extensions/fm-primary-pi-watch.ts`:
 
 1. `session_shutdown` changes the current generation's durable extension marker from `active` to `handoff`, but keeps its established arm child alive.
