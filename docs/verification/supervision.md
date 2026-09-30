@@ -585,11 +585,13 @@ tests/fm-pi-watch-extension.test.sh
 tests/fm-pi-primary-types.test.sh
 tests/fm-watcher-lock.test.sh
 tests/fm-watch-arm.test.sh
+tests/fm-watch-triage.test.sh
 tests/fm-watch-recovery-loop.test.sh
 tests/fm-wake-queue.test.sh
 tests/fm-subagent-pretool-check.test.sh
 tests/fm-claude-stop-autoarm.test.sh
 tests/fm-turnend-guard.test.sh
+tests/fm-session-start.test.sh
 ```
 
 ## Supervision host

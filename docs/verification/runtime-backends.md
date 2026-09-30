@@ -6,6 +6,44 @@ This record contains reusable version-scoped evidence for active runtime guarant
 The backend guides own current setup, safety boundaries, and limitations.
 Exact task chronology, branch names, temporary homes, local paths, process ids, thread ids, and delivery transcripts remain in private reports or PR evidence.
 
+## Pi primary evidence admission
+
+The shared owner is `.pi/extensions/lib/fm-primary-ownership.ts`, consumed by both Pi primary extensions.
+The portable regression lives in `tests/fm-pi-watch-extension.test.sh`; the token-free real-CLI guard is part of `tests/fm-pi-primary-live-e2e.test.sh` and runs by default under `fm_live_gate` wherever Pi or Pi-signed is installed.
+Verified on 2026-09-30 on Linux with Node 24.21.0 and Pi 0.86.0:
+
+```sh
+bash tests/fm-pi-watch-extension.test.sh
+bash tests/fm-pi-primary-live-e2e.test.sh
+bash tests/fm-pi-primary-types.test.sh
+```
+
+Selected observed output:
+
+```text
+ok - Pi factories and nested/foreign/worker sessions preserve evidence; started exact or pre-lock primaries publish
+ok - pi 0.86.0 token-free primary ownership: fresh-home
+ok - pi 0.86.0 token-free primary ownership: pre-lock
+ok - pi 0.86.0 token-free primary ownership: exact-reload-nested
+ok - pi 0.86.0 token-free primary ownership: trusted-discovery
+ok - pi 0.86.0 token-free primary ownership: untrusted-discovery
+ok - pi 0.86.0 token-free primary ownership: worker
+ok - pi 0.86.0 token-free primary ownership: secondmate
+# unavailable primary ownership harness: pi-signed
+skip: live: opt-in; set FM_PI_LIVE_E2E=1 to run
+ok - tracked Pi extensions pass strict no-emit typecheck against Pi 0.86.0
+```
+
+The real guard uses private homes and no user credentials or model turns.
+Its lock-owning cases run `bin/fm-lock.sh` below the actual CLI and assert the recorded owner is the inner engine, rather than assuming that identity from a fixture.
+Nested `--help` and `--list-models` calls load explicit `-e` extensions with an ancestor-owned, absent, dead, or malformed lock and preserve both parent markers byte-for-byte; model discovery still lists an extension-registered provider.
+The same guard exercises a home without a state directory, pre-lock startup, real reload generation replacement, trusted and denied project discovery, a task worker, and a separate secondmate home.
+Portable cases additionally exercise an unrelated live owner, an unreadable lock shape, and session shutdown without admission, alongside the existing generation/handoff tests.
+Pi-signed was not installed on this host, so this run makes no new signed-wrapper claim; the guard tests it when installed and explicitly reports its absence otherwise.
+Native Windows and macOS were not exercised by this run; `tests/fm-pi-windows-shell-invocation.test.sh` remains the native-Windows shell-boundary check.
+The change does not alter the Bash hook invocation boundary or any runtime backend's launch/control surface.
+Claude, Codex, OpenCode, Grok, Kimi, Cursor, and omp retain their separate primary integrations and do not consume this Pi-only admission owner.
+
 ## Harness detection precedence
 
 Firstmate's own harness comes from two kinds of evidence, and `bin/fm-harness.sh` owns how they combine: an environment marker names its harness, and the nearest harness process in the parent chain proves who owns the process tree.

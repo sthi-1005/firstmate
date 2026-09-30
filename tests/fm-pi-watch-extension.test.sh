@@ -32,6 +32,7 @@ install_pi_watch_extension_fixture() {
     "$repo/node_modules/@earendil-works/pi-tui" \
     "$repo/node_modules/typebox"
   cp "$EXT" "$repo/.pi/extensions/fm-primary-pi-watch.ts"
+  cp "$ROOT/.pi/extensions/lib/fm-primary-ownership.ts" "$repo/.pi/extensions/lib/"
   cp "$ROOT/.pi/extensions/lib/fm-branch-dispatch.ts" "$repo/.pi/extensions/lib/fm-branch-dispatch.ts"
   cp "$ROOT/.pi/extensions/lib/fm-native-contract.ts" "$repo/.pi/extensions/lib/fm-native-contract.ts"
   cp "$ROOT/.pi/extensions/lib/fm-async-exec.ts" "$repo/.pi/extensions/lib/fm-async-exec.ts"
@@ -72,6 +73,110 @@ export const Type = {
   },
 };
 JS
+}
+
+test_pi_primary_evidence_admission() {
+  local repo home out status
+  repo="$TMP_ROOT/pi-primary-admission"
+  home="$TMP_ROOT/pi-primary-admission-home"
+  mkdir -p "$home/state" "$home/config"
+  install_pi_watch_extension_fixture "$repo"
+  cp "$ROOT/.pi/extensions/fm-primary-turnend-guard.ts" "$repo/.pi/extensions/"
+  cp "$ROOT/.pi/extensions/lib/fm-sessionstart-supervisor.mjs" "$repo/.pi/extensions/lib/"
+  printf '#!/usr/bin/env bash\nexit 3\n' > "$repo/bin/fm-sessionstart-run.sh"
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$repo/bin/fm-watch-arm.sh"
+  printf '#!/usr/bin/env bash\nprintf "worker-hook-still-active\\n" >&2\nexit 2\n' > "$repo/bin/fm-cd-pretool-check.sh"
+  chmod +x "$repo/bin/"*.sh
+  out=$(FM_HOME="$home" FM_ROOT_OVERRIDE="$repo" node --input-type=module 2>&1 <<'JS'
+import assert from "node:assert/strict";
+import { spawn, spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+const root = process.env.FM_ROOT_OVERRIDE;
+const state = `${process.env.FM_HOME}/state`;
+const lock = `${state}/.lock`;
+const markers = [".pi-watch-extension-loaded", ".pi-turnend-extension-loaded"].map(x => `${state}/${x}`);
+const snapshot = () => markers.map(p => existsSync(p) ? readFileSync(p, "utf8") : null);
+const sentinel = ["preserved watcher\n", "preserved turnend\n"];
+const seed = () => markers.forEach((p, i) => writeFileSync(p, sentinel[i]));
+const extensions = await Promise.all(["fm-primary-pi-watch.ts", "fm-primary-turnend-guard.ts"].map(p => import(pathToFileURL(`${root}/.pi/extensions/${p}`).href)));
+function bind() {
+  const handlers = new Map();
+  const pi = { on(name, handler) { handlers.set(name, [...(handlers.get(name) ?? []), handler]); }, registerTool() {}, registerCommand() {} };
+  for (const extension of extensions) extension.default(pi);
+  return async (event, value = {}) => {
+    const results = [];
+    for (const handler of handlers.get(event) ?? []) results.push(await handler(value, { sessionManager: { getSessionId: () => "admission" } }));
+    return results;
+  };
+}
+seed();
+const fire = bind();
+assert.deepEqual(snapshot(), sentinel, "factory-only load changed evidence");
+await fire("session_shutdown", { reason: "quit" });
+assert.deepEqual(snapshot(), sentinel, "factory-only shutdown retired evidence");
+const sleeper = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
+await new Promise((resolve, reject) => { sleeper.once("spawn", resolve); sleeper.once("error", reject); });
+const dead = spawnSync(process.execPath, ["-e", "process.stdout.write(String(process.pid))"], { encoding: "utf8" });
+assert.equal(dead.status, 0);
+try {
+  for (const [label, pid] of [["ancestor", process.ppid], ["unrelated", sleeper.pid], ["malformed", "bad"], ["init", 1], ["zero", 0]]) {
+    seed(); writeFileSync(lock, `${pid}\n`);
+    const events = bind();
+    await events("session_start", { reason: "reload" });
+    await events("session_shutdown", { reason: "reload" });
+    assert.deepEqual(snapshot(), sentinel, `${label} lock admitted primary evidence`);
+  }
+  // Real descendant: the lock owner and marker writer are this parent, not the
+  // probe. Starting and shutting down a nested session must not replace either.
+  writeFileSync(lock, `${process.pid}\n`); seed();
+  const child = spawnSync(process.execPath, ["--input-type=module", "-e", `
+    import { pathToFileURL } from 'node:url';
+    const handlers = [];
+    const pi = { on(n, f) { handlers.push([n, f]); }, registerTool() {}, registerCommand() {} };
+    for (const p of ['fm-primary-pi-watch.ts', 'fm-primary-turnend-guard.ts']) {
+      (await import(pathToFileURL(process.env.FM_ROOT_OVERRIDE + '/.pi/extensions/' + p).href)).default(pi);
+    }
+    for (const event of ['session_start', 'session_shutdown']) {
+      for (const [n, f] of handlers) if (n === event) await f({reason: 'reload'}, {});
+    }
+  `], { encoding: "utf8" });
+  assert.equal(child.status, 0, child.stderr);
+  assert.deepEqual(snapshot(), sentinel, "nested session borrowed ancestor lock");
+  for (const [label, pid] of [["absent", null], ["dead", dead.stdout], ["exact", process.pid]]) {
+    seed();
+    if (pid === null) rmSync(lock); else writeFileSync(lock, `${pid}\n`);
+    const events = bind();
+    assert.deepEqual(snapshot(), sentinel, `${label} factory published early`);
+    await events("session_start", { reason: "reload" });
+    for (const content of snapshot()) assert.equal(content?.split("\n")[1], String(process.pid), `${label} session did not publish`);
+    await events("session_shutdown", { reason: "quit" });
+  }
+  seed(); rmSync(lock); mkdirSync(lock);
+  const invalid = bind();
+  await invalid("session_start", { reason: "reload" });
+  assert.deepEqual(snapshot(), sentinel, "unreadable lock treated as absent");
+  await invalid("session_shutdown", { reason: "quit" });
+  rmSync(lock, { recursive: true });
+  // Workers may load this extension for tool hooks, but not primary evidence.
+  process.env.FM_TASK_ID = "fixture-worker";
+  writeFileSync(lock, `${process.pid}\n`); seed();
+  const worker = bind();
+  await worker("session_start", { reason: "reload" });
+  const hooks = await worker("tool_call", { type: "tool_call", toolName: "bash", input: { command: "printf test" } });
+  assert.ok(hooks.some(result => result?.block && result.reason === "worker-hook-still-active"), "worker lost its tool hook");
+  await worker("session_shutdown", { reason: "quit" });
+  assert.deepEqual(snapshot(), sentinel, "worker changed primary evidence");
+} finally {
+  sleeper.kill();
+  await new Promise(resolve => sleeper.once("close", resolve));
+}
+JS
+)
+  status=$?
+  expect_code 0 "$status" "Pi shared primary-evidence admission"
+  [ -z "$out" ] || fail "Pi primary-evidence admission: $out"
+  pass "Pi factories and nested/foreign/worker sessions preserve evidence; started exact or pre-lock primaries publish"
 }
 
 test_pi_extension_reports_external_healthy_watcher() {
@@ -3039,8 +3144,10 @@ const mod = await import(pathToFileURL(process.env.PLUGIN).href);
 
 const startup = makePi();
 mod.default(startup.pi);
+if (extensionOwner()) throw new Error("factory published session evidence before session_start");
+await startup.handlers.get("session_start")?.({ type: "session_start", reason: "startup" }, {});
 if (!/^generation=[1-9][0-9]* phase=active$/.test(extensionOwner())) {
-  throw new Error(`extension bind did not publish its pre-lock active generation: ${extensionOwner()}`);
+  throw new Error(`session_start did not publish its pre-lock active generation: ${extensionOwner()}`);
 }
 writeFileSync(`${process.env.FM_HOME}/state/.lock`, `${process.pid}\n`);
 await startup.handlers.get("session_start")?.({ type: "session_start", reason: "startup" }, {});
@@ -5181,6 +5288,7 @@ EOF
   pass "OpenCode healthy arm output does not suppress the turn-end guard"
 }
 
+test_pi_primary_evidence_admission
 test_pi_extension_reports_external_healthy_watcher
 test_pi_tool_returns_agent_tool_result
 test_pi_redundant_tool_call_is_owned_noop

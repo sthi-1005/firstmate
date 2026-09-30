@@ -800,6 +800,12 @@ else
 fi
 
 # --- 4. supervision operating instructions ----------------------------------
+if [ "$READ_ONLY" -eq 0 ]; then
+  if ! mkdir -p "$STATE/inbox" || [ -L "$STATE/inbox" ]; then
+    printf 'SESSION_START_INBOX: captain inbox reception could not be registered at %s\n' "$STATE/inbox" >&2
+    exit 1
+  fi
+fi
 stage supervision-instructions
 AFK_PRESENT=0
 [ -e "$STATE/.afk" ] && AFK_PRESENT=1

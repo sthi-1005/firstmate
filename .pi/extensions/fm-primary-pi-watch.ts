@@ -5,9 +5,9 @@
 // /fork, reload) as well as terminal quit. This extension binds one generation per
 // session activation. Only the active live generation may start, stop, rearm, or
 // clear the arm child. Replacement shutdown publishes a generation-bound handoff
-// phase but retains its established child until the next owning session_start (or
-// fresh factory bind) publishes a distinct active generation and commits the
-// tracked replacement arm without a model turn. A replacement handoff carries
+// phase but retains its established child until the next owning session_start
+// publishes a distinct active generation and commits the tracked replacement
+// arm without a model turn. A replacement handoff carries
 // actionable closes that were still pending delivery; its durable state lives at
 // state/extensions/pi-primary-watch/session-replacement-actionable.json.
 // Terminal quit leaves the final generation stopped so late callbacks cannot rearm.
@@ -54,13 +54,12 @@ import {
   FIRSTMATE_CALM_PRESENTATION_EVENT,
 } from "./lib/fm-calm-visibility.ts";
 import { encodeFirstmateOperationalInput } from "./lib/fm-operational-input.ts";
+import { piPrimaryLockOwnership } from "./lib/fm-primary-ownership.ts";
 
 type ArmResult = {
   ok: boolean;
   message: string;
 };
-
-type LockOwnership = "owned" | "missing" | "other";
 
 type CloseClassification = {
   kind: "actionable" | "failure";
@@ -227,12 +226,6 @@ function extensionLogKeepLines(): number {
   return value;
 }
 
-function parentPid(pid: string): string {
-  const result = spawnSync("ps", ["-o", "ppid=", "-p", pid], { encoding: "utf8" });
-  if (result.status !== 0) return "";
-  return result.stdout.trim();
-}
-
 function pidAlive(pid: string): boolean {
   try {
     process.kill(Number(pid), 0);
@@ -247,7 +240,6 @@ function pidAlive(pid: string): boolean {
 // repair call nor a scheduled retry would start anything until that close
 // finally fires. Callers that gate on slot occupancy use this instead of
 // owner.child so both paths can always recover.
-
 function liveArmChild(owner: SessionGeneration): ChildProcess | null {
   const child = owner.child;
   if (!child) return null;
@@ -257,21 +249,8 @@ function liveArmChild(owner: SessionGeneration): ChildProcess | null {
   return child;
 }
 
-function lockOwnership(): LockOwnership {
-  let lockPid = "";
-  try {
-    lockPid = readFileSync(`${state}/.lock`, "utf8").trim();
-  } catch {
-    return "missing";
-  }
-  if (!/^[0-9]+$/.test(lockPid) || lockPid === "1") return "other";
-  let pid = String(process.pid);
-  for (let i = 0; i < 8; i += 1) {
-    if (pid === lockPid) return "owned";
-    pid = parentPid(pid);
-    if (!pid || pid === "1") break;
-  }
-  return pidAlive(lockPid) ? "other" : "missing";
+function lockOwnership() {
+  return piPrimaryLockOwnership(state);
 }
 
 function publishGenerationOwner(generation: SessionGeneration, phase: "active" | "handoff"): void {
@@ -287,6 +266,7 @@ function publishGenerationOwner(generation: SessionGeneration, phase: "active" |
 }
 
 function retireGenerationOwner(generation: SessionGeneration, replacement: boolean): void {
+  if (lockOwnership() === "other") return;
   let lines: string[];
   try {
     lines = readFileSync(marker, "utf8").trimEnd().split(/\r?\n/);
@@ -1210,6 +1190,7 @@ export default function (pi: ExtensionAPI) {
   pi.on?.("session_start", async () => {
     if (generation.stopping) generation = createGeneration();
     activateGeneration(generation);
+    publishGenerationOwner(generation, "active");
     if (lockOwnership() !== "owned") return;
     activateOwnedWatch(generation);
   });
@@ -1270,10 +1251,4 @@ export default function (pi: ExtensionAPI) {
       };
     },
   });
-
-  // Pi loads project extensions before the first model turn can run the locked
-  // session-start command. Publish this generation while the lock is absent so
-  // that command can distinguish a loaded extension from a missing one; a
-  // foreign live lock still suppresses publication.
-  publishGenerationOwner(generation, "active");
 }

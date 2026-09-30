@@ -97,6 +97,16 @@ test_predicate_x_mode_needs_supervision() {
   pass "fm_supervision_needed: X-mode relay poll needs supervision"
 }
 
+test_predicate_registered_inbox_needs_supervision() {
+  local state="$TMP_ROOT/pred-inbox/state"
+  mkdir -p "$state/inbox"
+  fm_supervision_needed "$state" 300 || fail "a registered captain inbox did not need supervision"
+  [ "$FM_SUP_INBOX" = true ] || fail "captain inbox registration was not reported"
+  [ "$FM_SUP_IN_FLIGHT" -eq 0 ] || fail "captain inbox registration must not count as an in-flight task"
+  fm_supervision_unhealthy "$state" 300 || fail "an idle inbox home with no watcher must be unhealthy"
+  pass "fm_supervision_needed: a registered captain inbox keeps an idle home supervised"
+}
+
 test_predicate_source_needs_supervision() {
   local state="$TMP_ROOT/pred-source/state"
   mkdir -p "$state/procevent"
@@ -1067,6 +1077,7 @@ test_pi_extension_injects_once_per_logical_agent_run() {
   ext="$repo/.pi/extensions/fm-primary-turnend-guard.ts"
   log="$TMP_ROOT/pi-logical-run-guard.log"
   mkdir -p "$repo/.pi/extensions/lib" "$repo/bin" "$home/state"
+  cp "$ROOT/.pi/extensions/lib/fm-primary-ownership.ts" "$repo/.pi/extensions/lib/"
   cp "$ROOT/.pi/extensions/fm-primary-turnend-guard.ts" "$ext"
   cp "$ROOT/.pi/extensions/lib/fm-operational-input.ts" "$repo/.pi/extensions/lib/fm-operational-input.ts"
   cp "$ROOT/bin/fm-operational-input.sh" "$repo/bin/fm-operational-input.sh"
@@ -1133,6 +1144,7 @@ test_pi_extension_retries_after_followup_delivery_failure() {
   home="$TMP_ROOT/pi-delivery-failure-home"
   ext="$repo/.pi/extensions/fm-primary-turnend-guard.ts"
   mkdir -p "$repo/.pi/extensions/lib" "$repo/bin" "$home/state"
+  cp "$ROOT/.pi/extensions/lib/fm-primary-ownership.ts" "$repo/.pi/extensions/lib/"
   cp "$ROOT/.pi/extensions/fm-primary-turnend-guard.ts" "$ext"
   cp "$ROOT/.pi/extensions/lib/fm-operational-input.ts" "$repo/.pi/extensions/lib/fm-operational-input.ts"
   cp "$ROOT/bin/fm-operational-input.sh" "$repo/bin/fm-operational-input.sh"
@@ -2200,6 +2212,7 @@ test_predicate_unhealthy_stale_beacon
 test_predicate_healthy_fresh_beacon
 test_predicate_queue_pending_flag
 test_predicate_x_mode_needs_supervision
+test_predicate_registered_inbox_needs_supervision
 test_predicate_source_needs_supervision
 test_predicate_registered_check_needs_supervision
 test_predicate_registered_check_survives_rebinding_drift
