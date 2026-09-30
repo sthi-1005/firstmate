@@ -207,7 +207,7 @@ Before printing, the nudge wrapper reads `state/.lock` and walks at most eight p
 It does this in its own separate, hard-coded loop, independent of two other ownership checks:
 
 - The shared sixteen-hop ancestry walk in `bin/fm-session-lock-lib.sh` that `bin/fm-lock.sh` uses for anchor selection and ownership.
-- Pi's `lockOwnership()`.
+- Pi's exact-PID `piPrimaryLockOwnership()` admission in `.pi/extensions/lib/fm-primary-ownership.ts`.
 
 If the lock names a live pid in that ancestry, session start already ran in this harness session and the wrapper stays silent.
 
