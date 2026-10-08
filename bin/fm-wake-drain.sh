@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Present durable watcher wake records, retire rows no actor could ever consume,
 # optionally acknowledge handled records,
+# re-present every unanswered captain inbox note (id, age, first body line) on
+# each main drain until replied to or acked via fm-inbox.sh. A wake acknowledgement
+# still consumes its rows, but exits 3 with a final INBOX warning on stdout when
+# any retired inbox wake names a note that remains unanswered; do not retry the
+# consumed acknowledgement - reply to the note or use fm-inbox.sh drain --ack.
 # annotate every unread line for validated signal status keys, surface unread
 # informational status lines, latest captain-facing statuses not covered by a
 # newer branch outcome, OPEN DECISIONS, captain-call record divergence, and on
@@ -48,6 +53,7 @@ ACK_REMOVED=0
 PRESENTED_MAX=0
 ACK_FINGERPRINTS=
 ACK_NOTICE_FINGERPRINTS=
+ACK_INBOX_IDS=
 PRESENTATION_LOCK_TIMEOUT=${FM_STATUS_PRESENTATION_LOCK_TIMEOUT:-10}
 BRANCH_OUTCOMES_RC=0
 case "$PRESENTATION_LOCK_TIMEOUT" in ''|*[!0-9]*|0) PRESENTATION_LOCK_TIMEOUT=10 ;; esac
@@ -263,6 +269,56 @@ inactive_outcome_fingerprints() { # <sequence> <key-prefix> [<rows-file>]
       "$prefix"*) printf '%s\n' "${key#"$prefix"}" ;;
     esac
   done < "$FM_WAKE_QUEUE"
+}
+
+# Reuse the inbox receipt owner; keep full bodies and inventories off argv.
+open_inbox_notes() {
+  local note
+  for note in "$STATE/inbox/"*.note; do
+    [ -f "$note" ] || continue
+    (set -o pipefail
+      FM_STATE_OVERRIDE="$STATE" bash "$SCRIPT_DIR/fm-inbox.sh" receipts --all-pending \
+        | jq -ce '[.pending[] | select(.reply == null)]'
+    )
+    return "$?"
+  done
+  printf '[]\n'
+}
+
+print_captain_inbox_section() {
+  [ "$ACTOR" = main ] || return 0
+  local notes
+  if ! notes=$(open_inbox_notes); then
+    printf 'CAPTAIN INBOX INCOMPLETE: pending notes could not be read; run fm-inbox.sh receipts --all-pending.\n'
+    return 1
+  fi
+  jq -r '
+    if length == 0 then empty else
+      "CAPTAIN INBOX (\(length) pending - reply or fm-inbox.sh drain --ack):",
+      (.[] | (try (.at | fromdateiso8601) catch null) as $at |
+        "\(.id) age=\(if $at == null then "unknown" else ([0, (now - $at | floor)] | max | tostring) + "s" end): " +
+        ((.body | split("\n")[0]) | gsub("[[:cntrl:]]"; " ")))
+    end
+  ' <<< "$notes"
+}
+
+warn_unanswered_inbox_ack() {
+  [ -n "$ACK_INBOX_IDS" ] || return 0
+  local notes unanswered
+  if ! notes=$(open_inbox_notes); then
+    printf 'INBOX: wake acknowledgement completed, but unanswered notes could not be checked - run fm-inbox.sh receipts --all-pending.\n'
+    return 3
+  fi
+  unanswered=$(jq -r --rawfile retired <(printf '%s\n' "$ACK_INBOX_IDS") '
+    ($retired | split("\n")) as $ids |
+    [.[] | .id | select(. as $id | $ids | index($id))] | join(", ")
+  ' <<< "$notes") || {
+    printf 'INBOX: wake acknowledgement completed, but unanswered notes could not be checked - run fm-inbox.sh receipts --all-pending.\n'
+    return 3
+  }
+  [ -n "$unanswered" ] || return 0
+  printf 'INBOX: %s acked as a wake but still unanswered - reply or fm-inbox.sh drain --ack; the wake acknowledgement completed, do not retry it.\n' "$unanswered"
+  return 3
 }
 
 acknowledge_inactive_outcomes() { # <mode> <newline-separated-fingerprints>
@@ -833,6 +889,7 @@ else
   if [ "$lock_rc" -eq 124 ]; then
     printf 'WAKE DRAIN SKIPPED: queue lock remains held by live pid %s after %ss; retry on the next drain.\n' \
       "${FM_LOCK_HELD_PID:-unknown}" "$PRESENTATION_LOCK_TIMEOUT"
+    print_captain_inbox_section || exit 1
     exit 0
   fi
   printf 'wake drain: queue lock could not be acquired safely\n' >&2
@@ -914,6 +971,14 @@ if [ -n "$ACK_THROUGH" ]; then
       exit 1
     }
   fi
+  # Only warn for inbox rows actually removed by this actor, never rows above
+  # the cutoff or reserved to the other actor. Capture before replacing the queue.
+  ACK_INBOX_IDS=$(awk -F '\t' -v kept="$DRAIN_TMP" '
+    BEGIN { while ((getline line < kept) > 0) { split(line, fields, "\t"); remaining[fields[2]]=1 } }
+    !($2 in remaining) && $3 == "check" && $4 ~ /^inbox:/ {
+      id=substr($4, 7); if (!seen[id]++) print id
+    }
+  ' "$FM_WAKE_QUEUE") || exit 1
   ACK_REMOVED=$(( $(awk 'END { print NR }' "$FM_WAKE_QUEUE") - $(awk 'END { print NR }' "$DRAIN_TMP") ))
   if [ ! -s "$DRAIN_TMP" ]; then
     fm_recovery_marker_ack "$RECOVERY_MARKER" "$ACK_GENERATION"
@@ -967,7 +1032,8 @@ if [ -n "$ACK_THROUGH" ]; then
     printf 'wake drain: acknowledged wakes through %s (%s row(s) consumed), but a newer recovery episode is pending; re-run bin/fm-wake-drain.sh and use the new WAKE_ACK_REQUIRED command\n' \
       "$ACK_THROUGH" "$ACK_REMOVED" >&2
   fi
-  exit 0
+  warn_unanswered_inbox_ack
+  exit "$?"
 fi
 
 if [ ! -s "$FM_WAKE_QUEUE" ]; then
@@ -989,6 +1055,7 @@ if [ ! -s "$FM_WAKE_QUEUE" ]; then
   DRAIN_LOCK_HELD=false
   (print_status_presentation) || true
   print_branch_outcomes_section || BRANCH_OUTCOMES_RC=1
+  print_captain_inbox_section || BRANCH_OUTCOMES_RC=1
   if [ "$RECOVERY_ACK_REQUIRED" = true ]; then
     printf 'WAKE_ACK_REQUIRED: after handling completes run bin/fm-wake-drain.sh --ack-through 0 --recovery-generation %s\n' "${RECOVERY_MARKER_TOKEN##*:}" >&2
   fi
@@ -1011,6 +1078,7 @@ if [ "$ACTOR" = main ]; then
     DRAIN_LOCK_HELD=false
     (print_status_presentation) || true
     print_branch_outcomes_section || BRANCH_OUTCOMES_RC=1
+    print_captain_inbox_section || BRANCH_OUTCOMES_RC=1
     assert_watcher_liveness
     exit "$BRANCH_OUTCOMES_RC"
   fi
@@ -1074,5 +1142,6 @@ printf 'WAKE_ACK_REQUIRED: after handling completes run bin/fm-wake-drain.sh --a
 
 (print_status_presentation "$RAW_ROWS") || true
 print_branch_outcomes_section || BRANCH_OUTCOMES_RC=1
+print_captain_inbox_section || BRANCH_OUTCOMES_RC=1
 assert_watcher_liveness
 exit "$BRANCH_OUTCOMES_RC"

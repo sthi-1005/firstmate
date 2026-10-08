@@ -544,3 +544,118 @@ run_inbox "$home" drain --ack "$did" >/dev/null || fail "drain --ack failed"
 assert_absent "$home/state/inbox/$did.note" "acked note leaves pending"
 assert_present "$home/state/inbox/handled/$did.note" "acked note is in handled"
 pass "drain --ack still moves the note to handled"
+
+# Wake acknowledgement and note closure are separate. Pending notes must survive
+# lost/consumed wake rows, exceed receipt bounds, and disappear on reply or ack.
+run_wake_drain() {
+  local home=$1
+  shift
+  FM_HOME="$home" FM_STATE_OVERRIDE="$home/state" FM_DATA_OVERRIDE="$home/data" \
+    FM_CONFIG_OVERRIDE="$home/config" FM_ROOT_OVERRIDE="$TMP_ROOT" \
+    FM_SUPERVISION_ACTOR="${FM_SUPERVISION_ACTOR:-main}" \
+    bash "$ROOT/bin/fm-wake-drain.sh" "$@"
+}
+
+home=$(make_home wake-representation)
+ids=
+for i in $(seq 1 23); do
+  note=$(run_inbox "$home" note --json "unanswered item $i") || fail "bulk note failed"
+  id=$(printf '%s' "$note" | json_get id)
+  ids="$ids $id"
+done
+replied=$(run_inbox "$home" note --json "already replied") || fail "replied note failed"
+replied_id=$(printf '%s' "$replied" | json_get id)
+run_inbox "$home" reply "$replied_id" "answered" >/dev/null || fail "reply failed"
+acked=$(run_inbox "$home" note --json "already acked") || fail "acked note failed"
+acked_id=$(printf '%s' "$acked" | json_get id)
+run_inbox "$home" drain --ack "$acked_id" >/dev/null || fail "note ack failed"
+# Legacy/malformed timestamps must not break the presentation or hide the note.
+printf 'id=legacy-age\nat=unknown\n--\nlegacy body\nsecond line\n' > "$home/state/inbox/legacy-age.note"
+run_wake_drain "$home" > "$home/drain.out" 2> "$home/drain.err" || fail "wake drain failed"
+out=$(< "$home/drain.out")
+assert_contains "$out" "CAPTAIN INBOX (24 pending" "all unanswered notes reappear beyond receipt bounds"
+for id in $ids; do
+  assert_contains "$out" "$id age=" "every pending id is presented"
+done
+assert_contains "$out" "legacy-age age=unknown: legacy body" "unknown age remains actionable"
+if grep -q 'second line' "$home/drain.out"; then fail "presentation printed beyond the first body line"; fi
+if grep -qE '^.*age=.*(already replied|already acked)' "$home/drain.out"; then fail "closed notes were re-presented"; fi
+grep -Eq 'age=[0-9]+s: unanswered item' "$home/drain.out" || fail "valid timestamps did not show numeric ages"
+generation=$(sed -n 's/^WAKE_ACK_REQUIRED:.*--recovery-generation \([A-Za-z0-9._-]*\)$/\1/p' "$home/drain.err")
+first_id=${ids# }
+first_id=${first_id%% *}
+sequence=$(awk -F '\t' -v id="inbox:$first_id" '$4 == id { print $2 }' "$home/state/.wake-queue")
+set +e
+run_wake_drain "$home" --ack-through "$sequence" --recovery-generation "$generation" > "$home/ack.out" 2> "$home/ack.err"
+code=$?
+set -e
+expect_code 3 "$code" "consumed but unanswered inbox wake is a warning, not a refused ack"
+tail_line=$(tail -1 "$home/ack.out")
+assert_contains "$tail_line" "INBOX: $first_id acked as a wake but still unanswered" "warning survives stdout tail -1"
+assert_contains "$tail_line" "do not retry" "warning distinguishes completed acknowledgement"
+if grep -qF "inbox:$first_id" "$home/state/.wake-queue"; then fail "warning refused to consume its wake"; fi
+[ -s "$home/state/.wake-queue" ] || fail "partial ack swallowed rows above the cutoff"
+run_wake_drain "$home" --ack-through "$sequence" --recovery-generation "$generation" > "$home/replay.out" 2> "$home/replay.err" \
+  || fail "ack replay should be idempotent"
+if grep -q '^INBOX:' "$home/replay.out"; then fail "ack replay warned for a row it did not consume"; fi
+run_wake_drain "$home" > "$home/repeat.out" 2> "$home/repeat.err" || fail "repeat drain failed"
+assert_contains "$(< "$home/repeat.out")" "$first_id age=" "note reappears after its wake was retired"
+sequence=$(sed -n 's/^WAKE_ACK_REQUIRED:.*--ack-through \([0-9]*\) --recovery-generation.*$/\1/p' "$home/repeat.err")
+set +e
+run_wake_drain "$home" --ack-through "$sequence" --recovery-generation "$generation" > "$home/all-ack.out" 2> "$home/all-ack.err"
+code=$?
+set -e
+expect_code 3 "$code" "remaining open inbox wakes also warn"
+[ ! -s "$home/state/.wake-queue" ] || fail "warning left retired wakes queued"
+run_wake_drain "$home" > "$home/empty.out" 2> "$home/empty.err" || fail "empty-queue drain failed"
+assert_contains "$(< "$home/empty.out")" "CAPTAIN INBOX (24 pending" "empty queue still re-presents notes"
+run_inbox "$home" reply "$first_id" "now answered" >/dev/null || fail "reply after wake ack failed"
+# shellcheck disable=SC2086 # Intentional id list for the public multi-note ack.
+run_inbox "$home" drain --ack $ids legacy-age >/dev/null || fail "closing notes failed"
+run_wake_drain "$home" > "$home/closed.out" 2> "$home/closed.err" || fail "closed-note drain failed"
+if grep -q 'CAPTAIN INBOX' "$home/closed.out"; then fail "reply/ack did not stop re-presentation"; fi
+pass "every main drain re-presents unanswered notes until reply or ack, even after wake consumption"
+
+# Already closed notes, including notes whose wake is still queued, don't warn.
+home=$(make_home wake-closed-notes)
+for closure in reply ack; do
+  note=$(run_inbox "$home" note --json "close via $closure") || fail "closed fixture failed"
+  id=$(printf '%s' "$note" | json_get id)
+  if [ "$closure" = reply ]; then
+    run_inbox "$home" reply "$id" "answered" >/dev/null || fail "reply fixture failed"
+  else
+    run_inbox "$home" drain --ack "$id" >/dev/null || fail "ack fixture failed"
+  fi
+done
+run_wake_drain "$home" > "$home/drain.out" 2> "$home/drain.err" || fail "closed-note drain failed"
+sequence=$(sed -n 's/^WAKE_ACK_REQUIRED:.*--ack-through \([0-9]*\) --recovery-generation.*$/\1/p' "$home/drain.err")
+generation=$(sed -n 's/^WAKE_ACK_REQUIRED:.*--recovery-generation \([A-Za-z0-9._-]*\)$/\1/p' "$home/drain.err")
+run_wake_drain "$home" --ack-through "$sequence" --recovery-generation "$generation" > "$home/ack.out" 2> "$home/ack.err" \
+  || fail "closed-note wakes should ack successfully"
+if grep -q '^INBOX:' "$home/ack.out"; then fail "closed-note wakes warned as unanswered"; fi
+pass "reply or explicit note ack prevents an unanswered-wake warning"
+
+# A live branch grant must retain ownership: main still presents the notes when
+# all rows belong to branch, but must not warn for wakes it did not consume.
+home=$(make_home wake-branch-reservation)
+note=$(run_inbox "$home" note --json "branch-owned inbox note") || fail "branch note failed"
+id=$(printf '%s' "$note" | json_get id)
+FM_HOME="$home" bash "$ROOT/bin/fm-wake-grant.sh" activate "$$" inbox-test || fail "grant activate failed"
+FM_HOME="$home" bash "$ROOT/bin/fm-wake-grant.sh" publish inbox-test 1 || fail "grant publish failed"
+run_wake_drain "$home" > "$home/main.out" 2> "$home/main.err" || fail "reserved main drain failed"
+assert_contains "$(< "$home/main.out")" "$id age=" "main still presents inbox when all wakes are branch-owned"
+FM_SUPERVISION_ACTOR=branch run_wake_drain "$home" > "$home/branch.out" 2> "$home/branch.err" || fail "branch drain failed"
+if grep -q 'CAPTAIN INBOX' "$home/branch.out"; then fail "branch got main-only inbox presentation"; fi
+generation=$(sed -n 's/^WAKE_ACK_REQUIRED:.*--recovery-generation \([A-Za-z0-9._-]*\)$/\1/p' "$home/branch.err")
+run_wake_drain "$home" --ack-through 1 --recovery-generation "$generation" > "$home/main-ack.out" 2> "$home/main-ack.err" \
+  || fail "main ack of reserved row failed"
+[ -s "$home/state/.wake-queue" ] || fail "main swallowed branch-owned wake"
+if grep -q '^INBOX:' "$home/main-ack.out"; then fail "main warned for a branch-owned row it left queued"; fi
+set +e
+FM_SUPERVISION_ACTOR=branch run_wake_drain "$home" --ack-through 1 --recovery-generation "$generation" > "$home/branch-ack.out" 2> "$home/branch-ack.err"
+code=$?
+set -e
+expect_code 3 "$code" "branch ack also warns when an inbox note is unanswered"
+assert_contains "$(tail -1 "$home/branch-ack.out")" "$id acked as a wake but still unanswered" "branch warning names its consumed note"
+[ ! -s "$home/state/.wake-queue" ] || fail "branch warning left its consumed wake queued"
+pass "inbox reminders and warnings preserve main/branch ownership"
