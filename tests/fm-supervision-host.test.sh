@@ -83,6 +83,12 @@ if [ "$mode" = hang ]; then
   sleep "$FM_TEST_STUB_MAX_BLOCK_SECONDS"
   exit 0
 fi
+# The optional pre-drain FIFO orders the shared marker transition against a
+# successor close; the ordinary held FIFO only controls when the turn ends.
+if [ -e "$FM_HOME/pre-drain-gate" ]; then
+  : > "$FM_HOME/pre-drain-ready"
+  read -r _ < "$FM_HOME/pre-drain-release"
+fi
 drain=$("$FM_REPO/bin/fm-wake-drain.sh" 2>&1)
 printf '%s\n' "$drain" > "$FM_HOME/engine-drain.$n"
 ack=$(printf '%s\n' "$drain" | sed -n 's/^WAKE_ACK_REQUIRED: after handling completes run bin\/fm-wake-drain.sh //p' | tail -1)
@@ -1218,6 +1224,98 @@ test_claude_stop_hook_delivers_a_main_only_pass_through() {
   assert_re '^signal: .*demo.status' "$home/hook.err" "the rewake must carry the close"
   watcher_live "$home" || fail "hook main-only: the pass-through left no successor watcher"
   pass "host+hook: an attended main-only pass-through rewakes main and keeps its successor watcher"
+}
+
+# Order the real branch drain before/after a main-only successor close. A late
+# drain changes their shared episode back to handling without consuming main's
+# check. Hand-back must restore downtime before detaching its next successor.
+assert_main_only_handback_with_ordered_branch_drain() {  # <before|after> [write-fails]
+  local order=$1 failure=${2:-} home successor generation real_mktemp
+  local key=procevent:ordered-handback:1
+  home=$(make_primary_home "hook-ordered-drain-$order${failure:+-$failure}")
+  ln -s "$ROOT/.agents" "$home/.agents"
+  echo held > "$home/stub-mode"
+  : > "$home/pre-drain-gate"
+  mkfifo "$home/pre-drain-release" "$home/stub-release"
+  if [ -n "$failure" ]; then
+    real_mktemp=$(command -v mktemp)
+    cat > "$home/fakebin/mktemp" <<SH
+#!/usr/bin/env bash
+case "\$*" in
+  *'/.watcher-down.tmp.'*) [ ! -e "\$FM_HOME/fail-downtime-write" ] || exit 1 ;;
+esac
+exec "$real_mktemp" "\$@"
+SH
+    chmod +x "$home/fakebin/mktemp"
+  fi
+  start_hook_session "$home"
+  turn_end "$home"
+  wait_until 150 watcher_live "$home" || fail "ordered drain: no fixture watcher"
+  append_status "$home" 'bounded branch-owned work'
+  wait_until 250 test -e "$home/pre-drain-ready" || fail "ordered drain: no engine pre-drain gate"
+  successor=$(cat "$home/state/.watch.lock/pid")
+  if [ "$order" = before ]; then
+    printf 'continue\n' > "$home/pre-drain-release"
+    wait_until 150 test -s "$home/engine-drain.1" || fail "ordered drain: early drain absent"
+    assert_re '^(pending|announced):handling:' "$home/state/.watcher-down" "early drain must begin handling"
+  fi
+  append_wake "$home/state" check "$key" "check: process-event result captured: $key"
+  wait_until 250 bash -c '! kill -0 "$1" 2>/dev/null' _ "$successor" \
+    || fail "ordered drain: main-only check did not close the successor during the engine turn"
+  assert_re '^pending:downtime:' "$home/state/.watcher-down" "check close must publish downtime"
+  generation=$(cut -d: -f3 "$home/state/.watcher-down")
+  if [ "$order" = after ]; then
+    printf 'continue\n' > "$home/pre-drain-release"
+    wait_until 150 test -s "$home/engine-drain.1" || fail "ordered drain: late drain absent"
+    assert_re "^pending:handling:$generation$" "$home/state/.watcher-down" "late drain must re-enter handling on the same episode"
+  fi
+  assert_no_grep "$key" "$home/engine-drain.1" "the branch must not present main's check"
+  assert_grep "--recovery-generation $generation" "$home/engine-drain.1" "the branch must acknowledge this shared generation"
+  [ -z "$failure" ] || : > "$home/fail-downtime-write"
+  printf 'continue\n' > "$home/stub-release"
+  wait_until 250 hook_exited "$home" || fail "ordered drain: hook did not finish: $(cat "$home/state/.supervision-host.log")"
+  assert_re 'handled.*posture=attended' "$home/state/.supervision-host.log" "the branch turn must finish and acknowledge its rows"
+  assert_re 'pass-through[[:space:]]+attended[[:space:]]+main-only[[:space:]]+check:' \
+    "$home/state/.supervision-host.log" "the check must use the ordinary main-only hand-back"
+  assert_grep "$key" "$home/state/.wake-queue" "the main-only check must remain durable"
+  assert_no_grep 'demo.status' "$home/state/.wake-queue" "the branch acknowledgement must consume only its own row"
+  if [ -n "$failure" ]; then
+    assert_re 'pass-through[[:space:]]+downtime-unrestored' "$home/state/.supervision-host.log" "the fixture must fail the hand-back restoration"
+    expect_code 2 "$(cat "$home/hook.rc")" "a failed restoration must notify main, not silently succeed"
+    assert_grep 'firstmate watcher auto-arm FAILED' "$home/hook.err" "main must receive a real hand-back failure"
+    assert_re 'outcome=failed ' "$home/state/.claude-autoarm-epoch" "the failure notification must commit"
+    watcher_live "$home" && fail "failed hand-back left an unowned healthy successor"
+    assert_absent "$home/state/.supervision-host-left" "failed hand-back must not relinquish its successor"
+  else
+    assert_rewoke_main "$home" "ordered drain $order"
+    assert_re '^check: process-event result captured: procevent:ordered-handback:1$' "$home/hook.err" "the rewake must carry main's check"
+    assert_re "^(pending|announced):downtime:$generation$" "$home/state/.watcher-down" "hand-back must preserve the pending generation"
+    assert_grep "recovery_generation=$generation" "$home/state/.claude-autoarm-epoch" "the rewake must commit against that generation"
+    watcher_live "$home" || fail "successful hand-back left no successor"
+    # A later normal successor close cannot erase the already-delivered rewake.
+    successor=$(cat "$home/state/.watch.lock/pid")
+    append_status "$home" 'new independently actionable blocker' blocked
+    wait_until 250 bash -c '! kill -0 "$1" 2>/dev/null' _ "$successor" || fail "detached successor did not close"
+    assert_rewoke_main "$home" "ordered drain $order after detached successor close"
+    assert_grep "$key" "$home/state/.wake-queue" "later successor close must preserve the undrained check"
+  fi
+  : > "$home/session.stop"
+  stop_home_processes "$home"
+}
+
+test_main_only_handback_restores_downtime_after_late_branch_drain() {
+  assert_main_only_handback_with_ordered_branch_drain after
+  pass "host+hook: main-only hand-back restores a late branch drain's handling episode and commits the rewake"
+}
+
+test_main_only_handback_delivers_when_branch_drains_before_successor_close() {
+  assert_main_only_handback_with_ordered_branch_drain before
+  pass "host+hook: draining before the main-only successor close still commits the same generation's rewake"
+}
+
+test_main_only_handback_notifies_when_late_drain_downtime_restore_fails() {
+  assert_main_only_handback_with_ordered_branch_drain after write-fails
+  pass "host+hook: failed ordinary hand-back restoration retires its successor and delivers a failure"
 }
 
 # Close the confirmed handling watcher after the engine has acknowledged its
@@ -2953,6 +3051,9 @@ test_superseded_host_leaves_the_owner_untouched() {
   pass "host: a host under a superseded auto-arm generation stands down without touching the owner"
 }
 
+test_main_only_handback_restores_downtime_after_late_branch_drain
+test_main_only_handback_delivers_when_branch_drains_before_successor_close
+test_main_only_handback_notifies_when_late_drain_downtime_restore_fails
 test_claude_stop_hook_restores_handoff_when_successor_closed_before_exit_to_main
 test_claude_stop_hook_restores_handoff_when_successor_closed_mid_engine_turn
 test_claude_stop_hook_notifies_when_closed_successor_downtime_restore_fails
