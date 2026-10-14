@@ -27,8 +27,7 @@
 # only request before transport, and the precedence probes read only a local
 # placeholder key for their never-contacted fake provider. Run after
 # every Pi upgrade and before trusting refreshed per-harness evidence
-# (docs/verification/runtime-backends.md). FM_TEST_ONLY=custom-run-start selects
-# the user/custom start and away-cancellation probe without unrelated SDK guards.
+# (docs/verification/runtime-backends.md).
 set -u
 
 # shellcheck source=tests/lib.sh
@@ -88,10 +87,6 @@ ln -s "$PI_PACKAGE_DIR/node_modules/typebox" "$repo/node_modules/typebox"
 # the tracked branch handler with the real event runner and outcome scripts,
 # using an isolated resource loader and an intercepted synthetic provider.
 # This probe works with the managed bundled SDK as well as npm's layout.
-case "${FM_TEST_ONLY:-}" in
-  ''|custom-run-start) ;;
-  *) fail "unknown live Pi probe: $FM_TEST_ONLY" ;;
-esac
 # Earlier Pi versions do not emit custom run-start events. Keep their existing
 # guards usable, but never claim this new event contract was checked there.
 start_probe_supported=$(node -e '
@@ -314,9 +309,6 @@ fi
 pass "real Pi SDK $PI_VERSION distinguishes user/custom starts, acknowledges one idle processing request, and cancels it on an away transition without a provider call"
 else
   printf 'skip: installed Pi %s predates the custom run-start event contract 1.2.0\n' "$PI_VERSION"
-fi
-if [ "${FM_TEST_ONLY:-}" = custom-run-start ]; then
-  exit 0
 fi
 
 # Stock macOS Bash 3.2 cannot reliably parse JavaScript template literals in a

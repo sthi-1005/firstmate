@@ -702,7 +702,6 @@ Other tests remain where they were:
 ### Live guards
 
 `FM_PI_BRANCH_LIVE_E2E=1 tests/fm-pi-branch-live-e2e.test.sh` exercises the real installed Pi SDK's user/custom run starts and away cancellation, immediate active-transcript appendEntry rendering, persistence, custom-entry model exclusion, branch-session surfaces, and watcher-owned fallback after rejected branch settlement.
-Add `FM_TEST_ONLY=custom-run-start` to select only the user/custom start and away-cancellation probe.
 
 `FM_PI_BRANCH_RESPONSIVENESS_E2E=1 tests/fm-pi-branch-responsiveness-live-e2e.test.sh` answers the question only a real TUI can.
 It types into an isolated Pi pane while outcomes are delivered and fails if keystroke echo leaves the class of the same machine's extension-free floor.

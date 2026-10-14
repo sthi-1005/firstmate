@@ -2233,12 +2233,13 @@ The focused run-start guard was verified on Linux with Node v24.21.0 against the
 It loads the tracked branch extension through Pi's real extension loader and event runner, uses the real outcome and away-record scripts in an isolated home, and intercepts every synthetic provider request without reading user credentials or changing a running session.
 
 ```sh
-FM_PI_BRANCH_LIVE_E2E=1 FM_TEST_ONLY=custom-run-start FM_PI_PACKAGE_DIR="$HOME/.pi/agent/install/releases/1.2.0/node_modules/@earendil-works/pi-coding-agent" bash bin/fm-test-run.sh tests/fm-pi-branch-live-e2e.test.sh
+FM_PI_BRANCH_LIVE_E2E=1 FM_PI_PACKAGE_DIR="$HOME/.pi/agent/install/releases/1.2.0/node_modules/@earendil-works/pi-coding-agent" bash bin/fm-test-run.sh tests/fm-pi-branch-live-e2e.test.sh
 bash bin/fm-test-run.sh tests/fm-pi-branch-extension.test.sh tests/fm-branch-supervision.test.sh tests/fm-pi-primary-types.test.sh
 ```
 
 ```text
 ok - real Pi SDK 1.2.0 distinguishes user/custom starts, acknowledges one idle processing request, and cancels it on an away transition without a provider call
+not ok - real-SDK Pi branch guard failed against pi-coding-agent 1.2.0: ... Cannot find package '@earendil-works/pi-ai' imported from .../fm-branch-supervision.ts
 ok - requested and unsolicited healthy outcomes keep distinct delivery and event ownership
 ok - under the away-posture record the wake carries the verbatim read-back tail, claims every row, opens no processing turn, cancels a pending request, and presents the accumulated rows after archive
 skip: Pi extension typecheck prerequisite not found: tsc
@@ -2247,6 +2248,7 @@ skip: Pi extension typecheck prerequisite not found: tsc
 The real-SDK probe covers idle custom starts without `prompt`, ordinary user starts, custom messages without a triggered turn, streaming custom follow-ups, ownership refusal, a generated processing request closed by a model-issued sequence acknowledgement, and a real away record appearing during run setup.
 The portable cases separately verify that custom content never enters the user-dialog mirror and that only an exact processing type and queued content match can abort a dedicated processing run.
 A fixture using the original handler fails on `undefined.trim`; replacing only the trim with a nullish fallback instead fails because away cancellation still spends a provider completion.
+The run-start probe runs first in the live script; the later branch-session guards link `pi-ai` and `pi-tui` from npm's nested package layout, which the managed release hoists, so that run stopped there and those guards are not covered by this entry.
 No compiler was installed, so the typecheck is unavailable rather than verified; the portable suite's unrelated installed-renderer/picker cases also skipped because no global npm Pi package was present.
 This is evidence for the importable Pi 1.2.0 SDK, not a separate signed-binary or native-Codex transport verification.
 Pi and pi-signed share the Pi extension integration, while the inspected OMP, Claude, Codex, OpenCode, Grok, Cursor, and Kimi integrations do not load this branch handler; the runtime session backends transport endpoints rather than these in-process run-start events.
