@@ -1676,11 +1676,18 @@ ${context.command}
     if (!(await enqueueDelivery(() => actingAsOwner(promptGeneration)))) return;
     if (promptGeneration !== generation || !currentMainSession || !collectCurrentMainDialog()) return;
 
-    // This event is Pi's authoritative complete current prompt. At this point
-    // SessionManager still contains only the preceding dialog, so relying on
+    // User events carry Pi's authoritative complete current prompt. At this
+    // point SessionManager contains only the preceding dialog, so relying on
     // getEntries() here loses the captain request that the next wake may answer.
     // Stage it verbatim and remember the future persisted index for turn_end's
     // duplicate suppression. Operational extension injections are not dialog.
+    // Pi's idle custom starts have a message instead of a user prompt. Keep
+    // their processing identity for away cancellation, never dialog mirroring.
+    if (event.messageType === "custom") {
+      processingOpenedThisRun = queuedProcessingContent !== null &&
+        isProcessingCustomMessage(event.message) && event.message.content === queuedProcessingContent;
+      return;
+    }
     const prompt = event.prompt;
     processingOpenedThisRun = queuedProcessingContent !== null && prompt === queuedProcessingContent;
     const trimmed = prompt.trim();

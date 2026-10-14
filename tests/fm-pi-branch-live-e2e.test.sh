@@ -27,7 +27,8 @@
 # only request before transport, and the precedence probes read only a local
 # placeholder key for their never-contacted fake provider. Run after
 # every Pi upgrade and before trusting refreshed per-harness evidence
-# (docs/verification/runtime-backends.md).
+# (docs/verification/runtime-backends.md). FM_TEST_ONLY=custom-run-start selects
+# the user/custom start and away-cancellation probe without unrelated SDK guards.
 set -u
 
 # shellcheck source=tests/lib.sh
@@ -82,6 +83,241 @@ ln -s "$PI_PACKAGE_DIR" "$repo/node_modules/@earendil-works/pi-coding-agent"
 ln -s "$PI_PACKAGE_DIR/node_modules/@earendil-works/pi-tui" "$repo/node_modules/@earendil-works/pi-tui"
 ln -s "$PI_PACKAGE_DIR/node_modules/@earendil-works/pi-ai" "$repo/node_modules/@earendil-works/pi-ai"
 ln -s "$PI_PACKAGE_DIR/node_modules/typebox" "$repo/node_modules/typebox"
+
+# Pi 1.2 gives an idle custom start a message instead of a prompt. Exercise
+# the tracked branch handler with the real event runner and outcome scripts,
+# using an isolated resource loader and an intercepted synthetic provider.
+# This probe works with the managed bundled SDK as well as npm's layout.
+case "${FM_TEST_ONLY:-}" in
+  ''|custom-run-start) ;;
+  *) fail "unknown live Pi probe: $FM_TEST_ONLY" ;;
+esac
+# Earlier Pi versions do not emit custom run-start events. Keep their existing
+# guards usable, but never claim this new event contract was checked there.
+start_probe_supported=$(node -e '
+const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(process.argv[1]);
+if (!match) process.exit(2);
+console.log(Number(match[1]) > 1 || (Number(match[1]) === 1 && Number(match[2]) >= 2) ? "yes" : "no");
+' "$PI_VERSION") || fail "cannot establish the custom-start SDK contract for Pi $PI_VERSION"
+if [ "$start_probe_supported" = yes ]; then
+starthome="$TMP_ROOT/start-home"
+startdir="$TMP_ROOT/start-agent-dir"
+mkdir -p "$starthome/state" "$starthome/config" "$startdir"
+BRANCH_PLUGIN="$repo/.pi/extensions/fm-branch-supervision.ts" \
+  FM_HOME="$starthome" FM_ROOT_OVERRIDE="$ROOT" \
+  FM_STATE_OVERRIDE="$starthome/state" FM_CONFIG_OVERRIDE="$starthome/config" \
+  PI_CODING_AGENT_DIR="$startdir" PI_PACKAGE_DIR="$PI_PACKAGE_DIR" \
+  node --input-type=module > "$TMP_ROOT/start-output" 2>&1 <<'EOF'
+import assert from "node:assert/strict";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+
+const home = resolve(process.env.FM_HOME);
+const agentDir = resolve(process.env.PI_CODING_AGENT_DIR);
+const pkg = resolve(process.env.PI_PACKAGE_DIR);
+const { createAgentSession, SessionManager, SettingsManager, ModelRuntime } =
+  await import(pathToFileURL(`${pkg}/dist/index.js`).href);
+const { loadExtensions, loadExtensionFromFactory } =
+  await import(pathToFileURL(`${pkg}/dist/core/extensions/loader.js`).href);
+writeFileSync(`${home}/state/.lock`, `${process.pid}\n`);
+process.env.FM_SUPERVISION_ACTOR = "main";
+process.env.FM_LEASE_HOLDER_PID = String(process.pid);
+const script = (name, ...args) => {
+  const result = spawnSync("bash", [`${process.env.FM_ROOT_OVERRIDE}/bin/${name}`, ...args], {
+    encoding: "utf8", cwd: home,
+  });
+  assert.equal(result.status, 0, `${name} ${args.join(" ")}: ${result.stderr}`);
+  return result.stdout.trim();
+};
+const outcome = (...args) => script("fm-branch-outcome.sh", ...args);
+writeFileSync(`${agentDir}/models.json`, JSON.stringify({ providers: {
+  "fm-start-probe": {
+    baseUrl: "https://fm-start-probe.invalid/v1", api: "openai-completions", apiKey: "synthetic-placeholder",
+    models: [{ id: "synthetic", name: "Synthetic", contextWindow: 8192, maxTokens: 512 }],
+  },
+} }));
+let completions = 0;
+let holdNext = null;
+let acknowledgeNext = null;
+const providerInputs = [];
+const frame = (delta, finish = null) => `data: ${JSON.stringify({
+  id: "synthetic", object: "chat.completion.chunk", created: 1, model: "synthetic",
+  choices: [{ index: 0, delta, finish_reason: finish }],
+  ...(finish ? { usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } } : {}),
+})}\n\n`;
+globalThis.fetch = async (input, init) => {
+  const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  assert(url.startsWith("https://fm-start-probe.invalid/"), `unexpected external request: ${url}`);
+  providerInputs.push(JSON.parse(init?.body ?? await input.text()));
+  completions += 1;
+  const hold = holdNext;
+  const through = acknowledgeNext;
+  holdNext = null;
+  acknowledgeNext = null;
+  const delta = through === null ? { role: "assistant", content: "OK" } : {
+    role: "assistant", tool_calls: [{ index: 0, id: "synthetic-ack", type: "function",
+      function: { name: "fm_branch_processed", arguments: JSON.stringify({ through }) } }],
+  };
+  const encoder = new TextEncoder();
+  return new Response(new ReadableStream({ async start(controller) {
+    controller.enqueue(encoder.encode(frame(delta)));
+    if (hold) await hold;
+    controller.enqueue(encoder.encode(frame({}, through === null ? "stop" : "tool_calls")));
+    controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+    controller.close();
+  } }), { status: 200, headers: { "content-type": "text/event-stream" } });
+};
+const runtime = await ModelRuntime.create({
+  authPath: `${agentDir}/auth.json`, modelsPath: `${agentDir}/models.json`,
+  modelsStorePath: `${agentDir}/models-store.json`, allowModelNetwork: false,
+});
+const model = runtime.getModel("fm-start-probe", "synthetic");
+assert(model, "the synthetic provider was not resolved");
+const loaded = await loadExtensions([process.env.BRANCH_PLUGIN], home);
+assert.deepEqual(loaded.errors, []);
+const starts = [];
+const contexts = [];
+let enterAwayDuringStart = false;
+const observer = await loadExtensionFromFactory((pi) => {
+  pi.on("before_agent_start", (event) => {
+    starts.push({ messageType: event.messageType, hasPrompt: Object.hasOwn(event, "prompt"),
+      prompt: event.prompt, customType: event.message?.customType });
+    if (enterAwayDuringStart && event.messageType === "custom") {
+      script("fm-afk-contract.sh", "enter", "--words", "Synthetic away instructions");
+    }
+  });
+  pi.on("context", (event) => {
+    contexts.push(event.messages.some((message) => message.role === "custom" && message.customType === "fm-branch-process"));
+  });
+}, home, undefined, loaded.runtime, "synthetic-start-observer");
+loaded.extensions.push(observer);
+const resourceLoader = {
+  getExtensions: () => loaded, getSkills: () => ({ skills: [], diagnostics: [] }),
+  getPrompts: () => ({ prompts: [], diagnostics: [] }), getThemes: () => ({ themes: [], diagnostics: [] }),
+  getAgentsFiles: () => ({ agentsFiles: [] }), getSystemPrompt: () => "Synthetic event-contract probe.",
+  getSystemPromptSource: () => undefined, getAppendSystemPrompt: () => [], getAppendSystemPromptSources: () => [],
+  extendResources() {}, async reload() {},
+};
+const manager = SessionManager.inMemory(home);
+const { session } = await createAgentSession({
+  cwd: home, agentDir, sessionManager: manager, modelRuntime: runtime, model, resourceLoader,
+  settingsManager: SettingsManager.inMemory({ compaction: { enabled: false }, retry: { enabled: false } }),
+  thinkingLevel: "off", noTools: "builtin",
+});
+const errors = [];
+await session.bindExtensions({ onError: (error) => errors.push(error) });
+const waitFor = async (predicate, label) => {
+  for (let i = 0; i < 300; i += 1) {
+    assert.deepEqual(errors, [], `extension errors while waiting for ${label}`);
+    if (predicate()) return;
+    await new Promise((done) => setTimeout(done, 10));
+  }
+  throw new Error(`timeout waiting for ${label}`);
+};
+const custom = (customType = "fm-branch-process") => ({ customType, content: "Synthetic custom content", display: false });
+const processingEntries = () => manager.getEntries().filter((entry) =>
+  entry.type === "custom_message" && entry.customType === "fm-branch-process");
+try {
+  await session.prompt("Synthetic user request");
+  assert.deepEqual(starts, [{ messageType: "user", hasPrompt: true, prompt: "Synthetic user request", customType: undefined }]);
+  assert.equal(session.getLastAssistantText(), "OK");
+
+  for (const customType of ["fm-branch-process", "synthetic-other"]) {
+    const before = completions;
+    await session.sendCustomMessage(custom(customType), { triggerTurn: true, deliverAs: "followUp" });
+    assert.deepEqual(starts.at(-1), { messageType: "custom", hasPrompt: false, prompt: undefined, customType });
+    assert.equal(completions, before + 1);
+    assert.equal(session.getLastAssistantText(), "OK");
+  }
+  assert.deepEqual(errors, [], "idle custom starts raised extension errors");
+  const beforeNoTrigger = completions;
+  const startsBeforeNoTrigger = starts.length;
+  await session.sendCustomMessage(custom(), {});
+  assert.equal(completions, beforeNoTrigger);
+  assert.equal(starts.length, startsBeforeNoTrigger);
+
+  let release;
+  holdNext = new Promise((done) => { release = done; });
+  const beforeStreaming = completions;
+  const startsBeforeStreaming = starts.length;
+  const running = session.prompt("Synthetic held user request");
+  await waitFor(() => completions > beforeStreaming, "the held user completion");
+  await session.sendCustomMessage(custom(), { triggerTurn: true, deliverAs: "followUp" });
+  release();
+  await running;
+  assert.equal(completions, beforeStreaming + 2);
+  assert.equal(starts.length, startsBeforeStreaming + 1, "a streaming custom follow-up opened another run");
+  assert.equal(starts.at(-1).messageType, "user");
+
+  // A secondary instance must remain inert even on a custom start.
+  rmSync(`${home}/state/.lock`);
+  try {
+    await session.sendCustomMessage(custom(), { triggerTurn: true });
+  } finally {
+    writeFileSync(`${home}/state/.lock`, `${process.pid}\n`);
+  }
+  assert.deepEqual(errors, []);
+
+  // Real Firstmate store -> presentation -> idle custom run -> model-issued
+  // acknowledgement. No stub supplies the event shape or marks the row done.
+  const seq = Number(outcome("append", "--task", "synthetic-result", "--verdict", "captain", "--summary", "Synthetic result needs review"));
+  outcome("mark-read", "--through", String(seq));
+  const entriesBefore = processingEntries().length;
+  const startsBefore = starts.length;
+  const callsBefore = completions;
+  acknowledgeNext = seq;
+  await session.extensionRunner.emit({ type: "agent_settled" });
+  await waitFor(() => starts.length > startsBefore, "the generated processing start");
+  await session.waitForIdle();
+  assert.equal(processingEntries().length, entriesBefore + 1, "the processing request was lost or repeated");
+  assert.equal(starts.length, startsBefore + 1);
+  assert.equal(starts.at(-1).customType, "fm-branch-process");
+  assert.equal(completions, callsBefore + 2, "the acknowledgement did not finish in one run");
+  assert.equal(outcome("unprocessed"), "", "the model-issued acknowledgement did not close the sequence");
+  const acknowledged = manager.getEntries().filter((entry) => entry.type === "message" &&
+    entry.message.role === "toolResult" && entry.message.toolName === "fm_branch_processed");
+  assert.equal(acknowledged.length, 1);
+  assert.equal(acknowledged[0].message.isError, false);
+  assert(JSON.stringify(providerInputs[callsBefore].messages).includes(`[seq ${seq},`), "the provider never received the processing request");
+
+  // The away record appears after presentation, during run setup. Strip the
+  // request AND abort its dedicated run, not a historical-context completion.
+  const awaySeq = Number(outcome("append", "--task", "synthetic-away", "--verdict", "captain", "--summary", "Synthetic deferred result"));
+  outcome("mark-read", "--through", String(awaySeq));
+  enterAwayDuringStart = true;
+  const callsBeforeAway = completions;
+  const startsBeforeAway = starts.length;
+  const entriesBeforeAway = processingEntries().length;
+  const contextsBeforeAway = contexts.length;
+  await session.extensionRunner.emit({ type: "agent_settled" });
+  await waitFor(() => starts.length > startsBeforeAway, "the processing start before away cancellation");
+  await session.waitForIdle();
+  assert.equal(starts.length, startsBeforeAway + 1);
+  assert.equal(processingEntries().length, entriesBeforeAway + 1);
+  assert.equal(completions, callsBeforeAway, "away cancellation spent a provider completion");
+  assert(contexts.length > contextsBeforeAway, "the away context boundary did not run");
+  assert(contexts.slice(contextsBeforeAway).every((present) => !present), "processing survived the away context filter");
+  assert.equal(JSON.parse(outcome("unprocessed")).seq, awaySeq, "away cancellation consumed the pending result");
+  assert.deepEqual(errors, []);
+  console.log("START_OK");
+} finally {
+  session.dispose();
+}
+EOF
+status=$?
+out=$(cat "$TMP_ROOT/start-output")
+if [ "$status" -ne 0 ] || [ "$out" != START_OK ]; then
+  fail "real-SDK user/custom start guard failed against pi-coding-agent $PI_VERSION: $out"
+fi
+pass "real Pi SDK $PI_VERSION distinguishes user/custom starts, acknowledges one idle processing request, and cancels it on an away transition without a provider call"
+else
+  printf 'skip: installed Pi %s predates the custom run-start event contract 1.2.0\n' "$PI_VERSION"
+fi
+if [ "${FM_TEST_ONLY:-}" = custom-run-start ]; then
+  exit 0
+fi
 
 # Stock macOS Bash 3.2 cannot reliably parse JavaScript template literals in a
 # heredoc nested inside command substitution, so capture through a file.
