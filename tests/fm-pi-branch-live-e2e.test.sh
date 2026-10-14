@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Opt-in live guard for the Pi supervision-branch extension against the REAL
-# installed @earendil-works/pi-coding-agent SDK (no stubs): the branch session
+# installed @earendil-works/pi-coding-agent SDK (no stubs). On Pi 1.2+, a
+# run-start probe first drives the tracked handler through the real event
+# runner with user and custom starts and an away transition. Then the branch session
 # is created through the real DefaultResourceLoader/SessionManager/
 # createAgentSession surface, the custom bash and fm_branch_report tool
 # definitions must be accepted by the real tool registry, the session file and
@@ -25,7 +27,8 @@
 # PI_CODING_AGENT_DIR at an empty directory, so it reads no credentials and
 # model resolution stays empty by construction. The 429 probe intercepts its
 # only request before transport, and the precedence probes read only a local
-# placeholder key for their never-contacted fake provider. Run after
+# placeholder key for their never-contacted fake provider. The run-start probe
+# intercepts every request to its synthetic provider in-process. Run after
 # every Pi upgrade and before trusting refreshed per-harness evidence
 # (docs/verification/runtime-backends.md).
 set -u
