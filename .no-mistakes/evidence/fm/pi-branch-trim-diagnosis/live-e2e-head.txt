@@ -1,0 +1,25 @@
+FM_TEST_BEGIN 2026-10-14T03:41:56Z tests/fm-pi-branch-live-e2e.test.sh family=live-harness-optin expected_gate_skip=live-capability
+ok - real Pi SDK 1.2.0 distinguishes user/custom starts, acknowledges one idle processing request, and cancels it on an away transition without a provider call
+not ok - real-SDK Pi branch guard failed against pi-coding-agent 1.2.0: node:internal/modules/package_json_reader:331
+  throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+        ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@earendil-works/pi-ai' imported from /tmp/fm-pi-branch-live.gpdUjo/repo/.pi/extensions/fm-branch-supervision.ts
+    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:331:9)
+    at packageResolve (node:internal/modules/esm/resolve:784:25)
+    at moduleResolve (node:internal/modules/esm/resolve:873:18)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:705:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:725:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:763:56)
+    at #resolve (node:internal/modules/esm/loader:687:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:607:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:276:33) {
+  code: 'ERR_MODULE_NOT_FOUND'
+}
+
+Node.js v24.21.0
+FM_TEST_END 2026-10-14T03:42:00Z tests/fm-pi-branch-live-e2e.test.sh exit=1 duration_ms=3372 gate_skip=false
+FM_TEST_SUMMARY total=1 failed=1 skipped_gate=0 duration_ms=3432
+FM_TEST_SUMMARY_FAMILY family=live-harness-optin count=1 duration_ms=3372 failed=1
+FM_TEST_SLOWEST rank=1 script=tests/fm-pi-branch-live-e2e.test.sh duration_ms=3372

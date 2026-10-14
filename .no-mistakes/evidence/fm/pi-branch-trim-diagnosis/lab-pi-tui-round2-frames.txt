@@ -1,0 +1,463 @@
+
+===== frame 1 21:46:26 =====
+ $ bin/fm-session-start.sh (timeout 30s)
+ ... (174 earlier lines, ctrl+o to expand)
+ Follow the supervision operating instructions block above for harness 'pi'.
+ This script never starts supervision itself.
+ The digest above is complete for this session start. The READ-ONCE CONTRACT
+ section near the top of it governs what may still be read from disk.
+ Took 3.1s
+ fm_watch_arm_pi
+ watcher: started Pi extension arm child 7; future ordinary re-arms are automatic; call fm_watch_arm_pi again only after a later notification says the cycle is missing, failed, or unhealthy
+ [fm-lane General]
+ Captain, monitoring has restarted. No active work was interrupted.
+ [end General]
+ ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ watcher: FAILED - refusing to arm from a disposable validation checkout: /home/steve/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V/bin
+ Run bin/fm-wake-drain.sh first and handle the queued wake. Watcher continuity is extension-owned.
+ $ bin/fm-wake-drain.sh (timeout 30s)
+ (no output)
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring failed again, so my earlier restart confirmation was premature. This temporary validation copy cannot run monitoring; restart Firstmate from its normal repository. No active work
+ is affected.
+ [end General]
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Reloading keybindings, extensions, skills, prompts, themes, and context files...
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V (detached)
+↑23k ↓493 R175k CH99.2% $0.069 (sub) 8.1%/272k (auto)                                                                                                                (openai-codex) gpt-6.1-sol • medium
+
+===== frame 2 21:46:28 =====
+ $ bin/fm-session-start.sh (timeout 30s)
+ ... (174 earlier lines, ctrl+o to expand)
+ Follow the supervision operating instructions block above for harness 'pi'.
+ This script never starts supervision itself.
+ The digest above is complete for this session start. The READ-ONCE CONTRACT
+ section near the top of it governs what may still be read from disk.
+ Took 3.1s
+ fm_watch_arm_pi
+ watcher: started Pi extension arm child 7; future ordinary re-arms are automatic; call fm_watch_arm_pi again only after a later notification says the cycle is missing, failed, or unhealthy
+ [fm-lane General]
+ Captain, monitoring has restarted. No active work was interrupted.
+ [end General]
+ ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ watcher: FAILED - refusing to arm from a disposable validation checkout: /home/steve/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V/bin
+ Run bin/fm-wake-drain.sh first and handle the queued wake. Watcher continuity is extension-owned.
+ $ bin/fm-wake-drain.sh (timeout 30s)
+ (no output)
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring failed again, so my earlier restart confirmation was premature. This temporary validation copy cannot run monitoring; restart Firstmate from its normal repository. No active work
+ is affected.
+ [end General]
+ Reloaded keybindings, extensions, skills, prompts, themes, and context files
+── ⠏ Working ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V (detached)
+↑23k ↓493 R175k CH99.2% $0.069 (sub) 8.3%/272k (auto)                                                                                                                (openai-codex) gpt-6.1-sol • medium
+
+===== frame 3 21:46:30 =====
+ $ bin/fm-session-start.sh (timeout 30s)
+ ... (174 earlier lines, ctrl+o to expand)
+ Follow the supervision operating instructions block above for harness 'pi'.
+ This script never starts supervision itself.
+ The digest above is complete for this session start. The READ-ONCE CONTRACT
+ section near the top of it governs what may still be read from disk.
+ Took 3.1s
+ fm_watch_arm_pi
+ watcher: started Pi extension arm child 7; future ordinary re-arms are automatic; call fm_watch_arm_pi again only after a later notification says the cycle is missing, failed, or unhealthy
+ [fm-lane General]
+ Captain, monitoring has restarted. No active work was interrupted.
+ [end General]
+ ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ watcher: FAILED - refusing to arm from a disposable validation checkout: /home/steve/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V/bin
+ Run bin/fm-wake-drain.sh first and handle the queued wake. Watcher continuity is extension-owned.
+ $ bin/fm-wake-drain.sh (timeout 30s)
+ (no output)
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring failed again, so my earlier restart confirmation was premature. This temporary validation copy cannot run monitoring; restart Firstmate from its normal repository. No active work
+ is affected.
+ [end General]
+ Reloaded keybindings, extensions, skills, prompts, themes, and context files
+── ⠼ Working ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V (detached)
+↑23k ↓493 R175k CH99.2% $0.069 (sub) 8.3%/272k (auto)                                                                                                                (openai-codex) gpt-6.1-sol • medium
+
+===== frame 4 21:46:32 =====
+ This script never starts supervision itself.
+ The digest above is complete for this session start. The READ-ONCE CONTRACT
+ section near the top of it governs what may still be read from disk.
+ Took 3.1s
+ fm_watch_arm_pi
+ watcher: started Pi extension arm child 7; future ordinary re-arms are automatic; call fm_watch_arm_pi again only after a later notification says the cycle is missing, failed, or unhealthy
+ [fm-lane General]
+ Captain, monitoring has restarted. No active work was interrupted.
+ [end General]
+ ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ watcher: FAILED - refusing to arm from a disposable validation checkout: /home/steve/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V/bin
+ Run bin/fm-wake-drain.sh first and handle the queued wake. Watcher continuity is extension-owned.
+ $ bin/fm-wake-drain.sh (timeout 30s)
+ (no output)
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring failed again, so my earlier restart confirmation was premature. This temporary validation copy cannot run monitoring; restart Firstmate from its normal repository. No active work
+ is affected.
+ [end General]
+ Reloaded keybindings, extensions, skills, prompts, themes, and context files
+ fm_branch_outcomes recent=1
+ {"seq":2,"epoch":1791949585,"task":"lab-custom-start-2","wake":"","verdict":"captain","summary":"Lab round two: synthetic result for custom-start
+ validation","silent":false,"statusEndpoint":0,"statusIdent":"-"}
+── ⠏ Working ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V (detached)
+↑24k ↓513 R197k CH97.2% $0.072 (sub) 8.3%/272k (auto)                                                                                                                (openai-codex) gpt-6.1-sol • medium
+
+===== frame 5 21:46:34 =====
+ This script never starts supervision itself.
+ The digest above is complete for this session start. The READ-ONCE CONTRACT
+ section near the top of it governs what may still be read from disk.
+ Took 3.1s
+ fm_watch_arm_pi
+ watcher: started Pi extension arm child 7; future ordinary re-arms are automatic; call fm_watch_arm_pi again only after a later notification says the cycle is missing, failed, or unhealthy
+ [fm-lane General]
+ Captain, monitoring has restarted. No active work was interrupted.
+ [end General]
+ ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ watcher: FAILED - refusing to arm from a disposable validation checkout: /home/steve/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V/bin
+ Run bin/fm-wake-drain.sh first and handle the queued wake. Watcher continuity is extension-owned.
+ $ bin/fm-wake-drain.sh (timeout 30s)
+ (no output)
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring failed again, so my earlier restart confirmation was premature. This temporary validation copy cannot run monitoring; restart Firstmate from its normal repository. No active work
+ is affected.
+ [end General]
+ Reloaded keybindings, extensions, skills, prompts, themes, and context files
+ fm_branch_outcomes recent=1
+ {"seq":2,"epoch":1791949585,"task":"lab-custom-start-2","wake":"","verdict":"captain","summary":"Lab round two: synthetic result for custom-start
+ validation","silent":false,"statusEndpoint":0,"statusIdent":"-"}
+── ⠼ Working ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V (detached)
+↑24k ↓513 R197k CH97.2% $0.072 (sub) 8.3%/272k (auto)                                                                                                                (openai-codex) gpt-6.1-sol • medium
+
+===== frame 6 21:46:36 =====
+ fm_watch_arm_pi
+ watcher: started Pi extension arm child 7; future ordinary re-arms are automatic; call fm_watch_arm_pi again only after a later notification says the cycle is missing, failed, or unhealthy
+ [fm-lane General]
+ Captain, monitoring has restarted. No active work was interrupted.
+ [end General]
+ ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ watcher: FAILED - refusing to arm from a disposable validation checkout: /home/steve/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V/bin
+ Run bin/fm-wake-drain.sh first and handle the queued wake. Watcher continuity is extension-owned.
+ $ bin/fm-wake-drain.sh (timeout 30s)
+ (no output)
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring failed again, so my earlier restart confirmation was premature. This temporary validation copy cannot run monitoring; restart Firstmate from its normal repository. No active work
+ is affected.
+ [end General]
+ Reloaded keybindings, extensions, skills, prompts, themes, and context files
+ fm_branch_outcomes recent=1
+ {"seq":2,"epoch":1791949585,"task":"lab-custom-start-2","wake":"","verdict":"captain","summary":"Lab round two: synthetic result for custom-start
+ validation","silent":false,"statusEndpoint":0,"statusIdent":"-"}
+ fm_branch_processed through=2
+ processed through seq 2; no captain outcome remains unprocessed
+ Follow-up: ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ ↳ Alt+Up to edit all queued messages
+── ⠏ Working ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V (detached)
+↑24k ↓532 R220k CH99.1% $0.075 (sub) 8.3%/272k (auto)                                                                                                                (openai-codex) gpt-6.1-sol • medium
+
+===== frame 7 21:46:38 =====
+ fm_watch_arm_pi
+ watcher: started Pi extension arm child 7; future ordinary re-arms are automatic; call fm_watch_arm_pi again only after a later notification says the cycle is missing, failed, or unhealthy
+ [fm-lane General]
+ Captain, monitoring has restarted. No active work was interrupted.
+ [end General]
+ ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ watcher: FAILED - refusing to arm from a disposable validation checkout: /home/steve/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V/bin
+ Run bin/fm-wake-drain.sh first and handle the queued wake. Watcher continuity is extension-owned.
+ $ bin/fm-wake-drain.sh (timeout 30s)
+ (no output)
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring failed again, so my earlier restart confirmation was premature. This temporary validation copy cannot run monitoring; restart Firstmate from its normal repository. No active work
+ is affected.
+ [end General]
+ Reloaded keybindings, extensions, skills, prompts, themes, and context files
+ fm_branch_outcomes recent=1
+ {"seq":2,"epoch":1791949585,"task":"lab-custom-start-2","wake":"","verdict":"captain","summary":"Lab round two: synthetic result for custom-start
+ validation","silent":false,"statusEndpoint":0,"statusIdent":"-"}
+ fm_branch_processed through=2
+ processed through seq 2; no captain outcome remains unprocessed
+ Follow-up: ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ ↳ Alt+Up to edit all queued messages
+── ⠼ Working ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V (detached)
+↑24k ↓532 R220k CH99.1% $0.075 (sub) 8.3%/272k (auto)                                                                                                                (openai-codex) gpt-6.1-sol • medium
+
+===== frame 8 21:46:40 =====
+ [fm-lane General]
+ Captain, monitoring has restarted. No active work was interrupted.
+ [end General]
+ ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ watcher: FAILED - refusing to arm from a disposable validation checkout: /home/steve/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V/bin
+ Run bin/fm-wake-drain.sh first and handle the queued wake. Watcher continuity is extension-owned.
+ $ bin/fm-wake-drain.sh (timeout 30s)
+ (no output)
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring failed again, so my earlier restart confirmation was premature. This temporary validation copy cannot run monitoring; restart Firstmate from its normal repository. No active work
+ is affected.
+ [end General]
+ Reloaded keybindings, extensions, skills, prompts, themes, and context files
+ fm_branch_outcomes recent=1
+ {"seq":2,"epoch":1791949585,"task":"lab-custom-start-2","wake":"","verdict":"captain","summary":"Lab round two: synthetic result for custom-start
+ validation","silent":false,"statusEndpoint":0,"statusIdent":"-"}
+ fm_branch_processed through=2
+ processed through seq 2; no captain outcome remains unprocessed
+ [fm-lane General]
+ Captain, the second synthetic test result is acknowledged.
+ [end General]
+ Follow-up: ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ ↳ Alt+Up to edit all queued messages
+── ⠏ Working ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V (detached)
+↑24k ↓532 R220k CH99.1% $0.075 (sub) 8.3%/272k (auto)                                                                                                                (openai-codex) gpt-6.1-sol • medium
+
+===== frame 9 21:46:42 =====
+ ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ watcher: FAILED - refusing to arm from a disposable validation checkout: /home/steve/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V/bin
+ Run bin/fm-wake-drain.sh first and handle the queued wake. Watcher continuity is extension-owned.
+ $ bin/fm-wake-drain.sh (timeout 30s)
+ (no output)
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring failed again, so my earlier restart confirmation was premature. This temporary validation copy cannot run monitoring; restart Firstmate from its normal repository. No active work
+ is affected.
+ [end General]
+ Reloaded keybindings, extensions, skills, prompts, themes, and context files
+ fm_branch_outcomes recent=1
+ {"seq":2,"epoch":1791949585,"task":"lab-custom-start-2","wake":"","verdict":"captain","summary":"Lab round two: synthetic result for custom-start
+ validation","silent":false,"statusEndpoint":0,"statusIdent":"-"}
+ fm_branch_processed through=2
+ processed through seq 2; no captain outcome remains unprocessed
+ [fm-lane General]
+ Captain, the second synthetic test result is acknowledged.
+ [end General]
+ ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ watcher: FAILED - refusing to arm from a disposable validation checkout: /home/steve/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V/bin
+ Run bin/fm-wake-drain.sh first and handle the queued wake. Watcher continuity is extension-owned.
+── ⠼ Working ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V (detached)
+↑24k ↓555 R242k CH98.9% $0.078 (sub) 8.3%/272k (auto)                                                                                                                (openai-codex) gpt-6.1-sol • medium
+
+===== frame 10 21:46:44 =====
+ $ bin/fm-wake-drain.sh (timeout 30s)
+ (no output)
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring failed again, so my earlier restart confirmation was premature. This temporary validation copy cannot run monitoring; restart Firstmate from its normal repository. No active work
+ is affected.
+ [end General]
+ Reloaded keybindings, extensions, skills, prompts, themes, and context files
+ fm_branch_outcomes recent=1
+ {"seq":2,"epoch":1791949585,"task":"lab-custom-start-2","wake":"","verdict":"captain","summary":"Lab round two: synthetic result for custom-start
+ validation","silent":false,"statusEndpoint":0,"statusIdent":"-"}
+ fm_branch_processed through=2
+ processed through seq 2; no captain outcome remains unprocessed
+ [fm-lane General]
+ Captain, the second synthetic test result is acknowledged.
+ [end General]
+ ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ watcher: FAILED - refusing to arm from a disposable validation checkout: /home/steve/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V/bin
+ Run bin/fm-wake-drain.sh first and handle the queued wake. Watcher continuity is extension-owned.
+ $ bin/fm-wake-drain.sh (timeout 30s)
+ (no output)
+ Took 0.4s
+── ⠋ Working ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V (detached)
+↑24k ↓584 R264k CH98.9% $0.081 (sub) 8.3%/272k (auto)                                                                                                                (openai-codex) gpt-6.1-sol • medium
+
+===== frame 11 21:46:46 =====
+ (no output)
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring failed again, so my earlier restart confirmation was premature. This temporary validation copy cannot run monitoring; restart Firstmate from its normal repository. No active work
+ is affected.
+ [end General]
+ Reloaded keybindings, extensions, skills, prompts, themes, and context files
+ fm_branch_outcomes recent=1
+ {"seq":2,"epoch":1791949585,"task":"lab-custom-start-2","wake":"","verdict":"captain","summary":"Lab round two: synthetic result for custom-start
+ validation","silent":false,"statusEndpoint":0,"statusIdent":"-"}
+ fm_branch_processed through=2
+ processed through seq 2; no captain outcome remains unprocessed
+ [fm-lane General]
+ Captain, the second synthetic test result is acknowledged.
+ [end General]
+ ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ watcher: FAILED - refusing to arm from a disposable validation checkout: /home/steve/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V/bin
+ Run bin/fm-wake-drain.sh first and handle the queued wake. Watcher continuity is extension-owned.
+ $ bin/fm-wake-drain.sh (timeout 30s)
+ (no output)
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring remains unavailable from this temporary validation copy. Restart Firstmate from its normal repository; no active work
+── ⠴ Working ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V (detached)
+↑24k ↓584 R264k CH98.9% $0.081 (sub) 8.3%/272k (auto)                                                                                                                (openai-codex) gpt-6.1-sol • medium
+
+===== frame 12 21:46:48 =====
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring failed again, so my earlier restart confirmation was premature. This temporary validation copy cannot run monitoring; restart Firstmate from its normal repository. No active work
+ is affected.
+ [end General]
+ Reloaded keybindings, extensions, skills, prompts, themes, and context files
+ fm_branch_outcomes recent=1
+ {"seq":2,"epoch":1791949585,"task":"lab-custom-start-2","wake":"","verdict":"captain","summary":"Lab round two: synthetic result for custom-start
+ validation","silent":false,"statusEndpoint":0,"statusIdent":"-"}
+ fm_branch_processed through=2
+ processed through seq 2; no captain outcome remains unprocessed
+ [fm-lane General]
+ Captain, the second synthetic test result is acknowledged.
+ [end General]
+ ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ watcher: FAILED - refusing to arm from a disposable validation checkout: /home/steve/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V/bin
+ Run bin/fm-wake-drain.sh first and handle the queued wake. Watcher continuity is extension-owned.
+ $ bin/fm-wake-drain.sh (timeout 30s)
+ (no output)
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring remains unavailable from this temporary validation copy. Restart Firstmate from its normal repository; no active work is affected.
+ [end General]
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V (detached)
+↑25k ↓622 R287k CH99.2% $0.084 (sub) 8.4%/272k (auto)                                                                                                                (openai-codex) gpt-6.1-sol • medium
+
+===== frame 13 21:46:50 =====
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring failed again, so my earlier restart confirmation was premature. This temporary validation copy cannot run monitoring; restart Firstmate from its normal repository. No active work
+ is affected.
+ [end General]
+ Reloaded keybindings, extensions, skills, prompts, themes, and context files
+ fm_branch_outcomes recent=1
+ {"seq":2,"epoch":1791949585,"task":"lab-custom-start-2","wake":"","verdict":"captain","summary":"Lab round two: synthetic result for custom-start
+ validation","silent":false,"statusEndpoint":0,"statusIdent":"-"}
+ fm_branch_processed through=2
+ processed through seq 2; no captain outcome remains unprocessed
+ [fm-lane General]
+ Captain, the second synthetic test result is acknowledged.
+ [end General]
+ ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ watcher: FAILED - refusing to arm from a disposable validation checkout: /home/steve/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V/bin
+ Run bin/fm-wake-drain.sh first and handle the queued wake. Watcher continuity is extension-owned.
+ $ bin/fm-wake-drain.sh (timeout 30s)
+ (no output)
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring remains unavailable from this temporary validation copy. Restart Firstmate from its normal repository; no active work is affected.
+ [end General]
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V (detached)
+↑25k ↓622 R287k CH99.2% $0.084 (sub) 8.4%/272k (auto)                                                                                                                (openai-codex) gpt-6.1-sol • medium
+
+===== frame 14 21:46:52 =====
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring failed again, so my earlier restart confirmation was premature. This temporary validation copy cannot run monitoring; restart Firstmate from its normal repository. No active work
+ is affected.
+ [end General]
+ Reloaded keybindings, extensions, skills, prompts, themes, and context files
+ fm_branch_outcomes recent=1
+ {"seq":2,"epoch":1791949585,"task":"lab-custom-start-2","wake":"","verdict":"captain","summary":"Lab round two: synthetic result for custom-start
+ validation","silent":false,"statusEndpoint":0,"statusIdent":"-"}
+ fm_branch_processed through=2
+ processed through seq 2; no captain outcome remains unprocessed
+ [fm-lane General]
+ Captain, the second synthetic test result is acknowledged.
+ [end General]
+ ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ watcher: FAILED - refusing to arm from a disposable validation checkout: /home/steve/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V/bin
+ Run bin/fm-wake-drain.sh first and handle the queued wake. Watcher continuity is extension-owned.
+ $ bin/fm-wake-drain.sh (timeout 30s)
+ (no output)
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring remains unavailable from this temporary validation copy. Restart Firstmate from its normal repository; no active work is affected.
+ [end General]
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V (detached)
+↑25k ↓622 R287k CH99.2% $0.084 (sub) 8.4%/272k (auto)                                                                                                                (openai-codex) gpt-6.1-sol • medium
+
+===== frame 15 21:46:54 =====
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring failed again, so my earlier restart confirmation was premature. This temporary validation copy cannot run monitoring; restart Firstmate from its normal repository. No active work
+ is affected.
+ [end General]
+ Reloaded keybindings, extensions, skills, prompts, themes, and context files
+ fm_branch_outcomes recent=1
+ {"seq":2,"epoch":1791949585,"task":"lab-custom-start-2","wake":"","verdict":"captain","summary":"Lab round two: synthetic result for custom-start
+ validation","silent":false,"statusEndpoint":0,"statusIdent":"-"}
+ fm_branch_processed through=2
+ processed through seq 2; no captain outcome remains unprocessed
+ [fm-lane General]
+ Captain, the second synthetic test result is acknowledged.
+ [end General]
+ ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ watcher: FAILED - refusing to arm from a disposable validation checkout: /home/steve/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V/bin
+ Run bin/fm-wake-drain.sh first and handle the queued wake. Watcher continuity is extension-owned.
+ $ bin/fm-wake-drain.sh (timeout 30s)
+ (no output)
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring remains unavailable from this temporary validation copy. Restart Firstmate from its normal repository; no active work is affected.
+ [end General]
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V (detached)
+↑25k ↓622 R287k CH99.2% $0.084 (sub) 8.4%/272k (auto)                                                                                                                (openai-codex) gpt-6.1-sol • medium
+
+===== frame 16 21:46:56 =====
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring failed again, so my earlier restart confirmation was premature. This temporary validation copy cannot run monitoring; restart Firstmate from its normal repository. No active work
+ is affected.
+ [end General]
+ Reloaded keybindings, extensions, skills, prompts, themes, and context files
+ fm_branch_outcomes recent=1
+ {"seq":2,"epoch":1791949585,"task":"lab-custom-start-2","wake":"","verdict":"captain","summary":"Lab round two: synthetic result for custom-start
+ validation","silent":false,"statusEndpoint":0,"statusIdent":"-"}
+ fm_branch_processed through=2
+ processed through seq 2; no captain outcome remains unprocessed
+ [fm-lane General]
+ Captain, the second synthetic test result is acknowledged.
+ [end General]
+ ⁣FIRSTMATE_OP: v1 watcher: FIRSTMATE WATCHER WAKE: watcher: FAILED - Pi extension could not restore watcher continuity after 5 retries
+ watcher: FAILED - refusing to arm from a disposable validation checkout: /home/steve/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V/bin
+ Run bin/fm-wake-drain.sh first and handle the queued wake. Watcher continuity is extension-owned.
+ $ bin/fm-wake-drain.sh (timeout 30s)
+ (no output)
+ Took 0.4s
+ [fm-lane General]
+ Captain, monitoring remains unavailable from this temporary validation copy. Restart Firstmate from its normal repository; no active work is affected.
+ [end General]
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+~/.no-mistakes/worktrees/880eb4df9c25/01M4W7MX8VTHHCPWZ99Z1R681V (detached)
+↑25k ↓622 R287k CH99.2% $0.084 (sub) 8.4%/272k (auto)                                                                                                                (openai-codex) gpt-6.1-sol • medium

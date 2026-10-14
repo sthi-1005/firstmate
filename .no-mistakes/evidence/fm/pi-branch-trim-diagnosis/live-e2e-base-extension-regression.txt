@@ -1,0 +1,30 @@
+not ok - real-SDK user/custom start guard failed against pi-coding-agent 1.2.0: node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: idle custom starts raised extension errors
++ actual - expected
+
++ [
++   {
++     error: "Cannot read properties of undefined (reading 'trim')",
++     event: 'before_agent_start',
++     extensionPath: '/tmp/fm-pi-branch-live.PT0Mmt/repo/.pi/extensions/fm-branch-supervision.ts',
++     stack: "TypeError: Cannot read properties of undefined (reading 'trim')\n" +
++       '    at /tmp/fm-pi-branch-live.PT0Mmt/repo/.pi/extensions/fm-branch-supervision.ts:1686:28\n' +
++       '    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n' +
++       '    at async ExtensionRunner.emitBeforeAgentStart (file:///home/steve/.pi/agent/install/releases/1.2.0/node_modules/@earendil-works/pi-coding-agent/dist/core/extensions/runner.js:1141:43)\n' +
++       '    at async AgentSession._prepareRun (file:///home/steve/.pi/agent/install/releases/1.2.0/node_modules/@earendil-works/pi-coding-agent/dist/core/agent-session.js:1456:24)\n' +
++       '    at async AgentSession._startRun (file:///home/steve/.pi/agent/install/releases/1.2.0/node_modules/@earendil-works/pi-coding-agent/dist/core/agent-session.js:1396:24)\n' +
++       '    at async AgentSession.sendCustomMessage (file:///home/steve/.pi/agent/install/releases/1.2.0/node_modules/@earendil-works/pi-coding-agent/dist/core/agent-session.js:1840:13)\n' +
++       '    at async file:///tmp/fm-base-probe.w4vNqp/[eval1]:119:5'
++   },
++   {
++     error: "Cannot read properties of undefined (reading 'trim')",
++     event: 'before_agent_start',
++     extensionPath: '/tmp/fm-pi-branch-live.PT0Mmt/repo/.pi/extensions/fm-branch-supervision.ts',
++     stack: "TypeError: Cannot read properties of undefined (reading 'trim')\n" +
++       '    at /tmp/fm-pi-branch-live.PT0Mmt/repo/.pi/extensions/fm-branch-supervision.ts:1686:28\n' +
++       '    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n' +
++       '    at async ExtensionRunner.emitBeforeAgentStart (file:///home/steve/.pi/agent/install/releases/1.2.0/node_modules/@earendil-works/pi-coding-agent/dist/core/extensions/runner.js:1141:43)\n' +
++       '    at async AgentSession._prepareRun (file:///home/steve/.pi/agent/install/releases/1.2.0/node_modules/@earendil-works/pi-coding-agent/dist/core/agent-session.js:1456:24)\n' +
